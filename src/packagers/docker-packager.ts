@@ -48,8 +48,9 @@ export const dockerPackager = {
     });
 
     const registry =
-      getValue(target.project.options, 'package.docker.registry') || getValue(workspace, 'package.container.registry');
-    const repository = getValue(target.project.options, 'package.docker.repository');
+      getValue(target.project.options, 'package.container.registry') ||
+      getValue(workspace, 'package.container.registry');
+    const repository = getValue(target.project.options, 'package.container.repository');
     if (repository) {
       const tag = registry ? `${registry}/${repository}:${target.name}` : `${repository}:${target.name}`;
       console.log(`Tagging ${tag}`);
