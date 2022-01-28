@@ -1,0 +1,62 @@
+{
+  "title": "Aella Workspace Configuration",
+  "$schema": "http://json-schema.org/draft-07/schema",
+  "definitions": {
+    "workspace-package-options": {
+      "type": "object",
+      "properties": {
+        "container": {
+          "type": "object",
+          "properties": {
+            "registry": {
+              "description": "The default container registry to use for project tagging. This is the part before the `/` in the container's tag.",
+              "type": "string"
+            }
+          }
+        }
+      }
+    },
+    "workspace-project-options": {
+      "type": "object",
+      "properties": {
+        "config": {
+          "type": "object",
+          "properties": {
+            "filename": {
+              "type": "string"
+            }
+          }
+        },
+        "ignore": {
+          "type": "object",
+          "properties": {
+            "dirname": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "filename": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "type": "object",
+  "properties": {
+    "distDir": {
+      "type": "string"
+    },
+    "package": {
+      "$ref": "#/definitions/workspace-package-options"
+    },
+    "project": {
+      "$ref": "#/definitions/workspace-project-options"
+    }
+  }
+}

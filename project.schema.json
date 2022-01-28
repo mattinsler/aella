@@ -1,0 +1,89 @@
+{
+  "title": "Aella Project Configuration",
+  "$schema": "http://json-schema.org/draft-07/schema",
+  "definitions": {
+    "project-build-options": {
+      "type": "object",
+      "properties": {
+        "builder": {
+          "type": "string",
+          "enum": [
+            "esbuild",
+            "tsc"
+          ]
+        }
+      }
+    },
+    "project-package-options": {
+      "type": "object",
+      "properties": {
+        "container": {
+          "type": "object",
+          "properties": {
+            "registry": {
+              "description": "The container registry to use for project tagging. This is the part before the / in the container's tag. Use the repository option to specify the full tag (`<registry>/<repository>`). If set, this value overrides the value in your workspace configuration.",
+              "type": "string"
+            },
+            "repository": {
+              "description": "The container repository name to use for project tagging. If a registry is specified, the full tag will be `<registry>/<repository>`.",
+              "type": "string"
+            }
+          }
+        }
+      }
+    },
+    "project-options": {
+      "type": "object",
+      "properties": {
+        "build": {
+          "$ref": "#/definitions/project-build-options"
+        },
+        "package": {
+          "$ref": "#/definitions/project-package-options"
+        }
+      }
+    },
+    "target": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "object",
+          "properties": {
+            "assets": {
+              "description": "A list of files to be copied in the dist directory structure during a build. These are files that would not be output from a normal source code build.",
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "entry": {
+              "description": "The entry file for this target. The entry should be relative to the project directory.",
+              "examples": [
+                "index.ts"
+              ],
+              "type": "string"
+            }
+          },
+          "required": [
+            "entry"
+          ]
+        }
+      ]
+    }
+  },
+  "type": "object",
+  "properties": {
+    "options": {
+      "$ref": "#/definitions/project-options"
+    },
+    "targets": {
+      "description": "This is an object of target configurations. The key is the name of the target within this project. For instance, `{ targets: { foo: { /* ... */ } } }` will denote a target named `foo` within this project. If the target name matches the project directory, it will be considered the default target for the project.",
+      "type": "object",
+      "additionalProperties": {
+        "$ref": "#/definitions/target"
+      }
+    }
+  }
+}
