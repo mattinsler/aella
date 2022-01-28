@@ -1,8 +1,18 @@
+import fs from 'fs';
 import os from 'os';
+import path from 'path';
 import chalk from 'chalk';
+import { fileURLToPath } from 'url';
+
+const pkg = JSON.parse(
+  fs.readFileSync(path.join(path.dirname(fileURLToPath(import.meta.url)), '..', '..', 'package.json'), 'utf-8')
+);
 
 export function help(errorMessage?: string) {
   const lines = [
+    '',
+    chalk.bold('VERSION'),
+    `  ${pkg.name}/${pkg.version}`,
     '',
     chalk.bold('USAGE'),
     '  aella COMMAND ...',
