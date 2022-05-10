@@ -10,9 +10,9 @@ import {
 
 import type { WorkspaceConfig } from '@aella/core';
 
-import { affected, build, fix, help, init, list, run } from './commands/index.js';
+import { affected, build, deploy, fix, help, init, list, run } from './commands/index.js';
 
-const DEFAULT_COMMANDS = [run, build, fix, affected, list, init, help];
+const DEFAULT_COMMANDS = [run, affected, build, deploy, fix, init, list, help];
 
 function findCommand(workspace: WorkspaceConfig, value: string) {
   return workspace.commands.find((command) => {

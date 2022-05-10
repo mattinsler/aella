@@ -13,8 +13,8 @@ import {
 
 import type { Builder, Command, WorkspaceConfig } from '@aella/core';
 
-// root tsconfig.json has all projects referenced
-// tsconfig.base.json has paths to projects (maybe?)
+// x root tsconfig.json has all projects referenced
+// x tsconfig.base.json has paths to projects (maybe?)
 // x tsconfig.json exists for projects and properly references root tsconfig.base.json
 // x tsconfig.json for each project has references to dependencies
 // x project.json for each project has deps properly filled in
@@ -35,9 +35,6 @@ async function loadProjects(
 
 async function readJsonFile(file: string) {
   return parse(await fs.promises.readFile(file, 'utf-8'));
-}
-function readJsonFileSync(file: string) {
-  return parse(fs.readFileSync(file, 'utf-8'));
 }
 
 async function analyzeDependencies(
@@ -73,6 +70,21 @@ async function analyzeDependencies(
   );
 
   return depsByProject;
+}
+
+async function updateRootTsconfig(workspace: WorkspaceConfig, projects: ProjectConfig[]) {
+  const tsconfigFile = path.join(workspace.rootDir, 'tsconfig.json');
+  const tsconfig = await readJsonFile(tsconfigFile);
+
+  const references: { path: string }[] = tsconfig.references || [];
+  projects.forEach((project) => {
+    const projectTsconfigFile = path.join(project.name, 'tsconfig.json');
+    if (!references.some((ref) => ref.path === projectTsconfigFile)) {
+      references.push({ path: projectTsconfigFile });
+    }
+  });
+
+  await utils.writeFile(tsconfigFile, JSON.stringify(tsconfig, null, 2), 'utf-8');
 }
 
 async function updateTsConfigBase(workspace: WorkspaceConfig, projects: ProjectConfig[]) {
@@ -130,6 +142,10 @@ async function execute(workspace: WorkspaceConfig, argv: string[]) {
   const depsByProject = await analyzeDependencies(projects);
 
   await Promise.all([
+    updateRootTsconfig(
+      workspace,
+      Object.values(projects).map(({ project }) => project)
+    ),
     updateTsConfigBase(
       workspace,
       Object.values(projects).map(({ project }) => project)

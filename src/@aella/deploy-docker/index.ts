@@ -19,5 +19,8 @@ export const plugin: Plugin = (ctx) => {
         .prop('repository', S.string())
         .prop('registry', S.string())
     );
+
+    // defaults....
+    // config.schemas.workspace.
   });
 };

@@ -6,6 +6,8 @@ import { exec } from 'child_process';
 import { parse } from 'es-module-lexer';
 import isBuiltinModule from 'is-builtin-module';
 
+import { findProjects } from './find-projects.js';
+
 const EXTRACT_MODULE_NAME_RX = /(@[^\/]+\/)?[^\/]+/;
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const PKG = JSON.parse(fs.readFileSync(path.join(ROOT, 'package.json'), 'utf-8'));
@@ -64,25 +66,7 @@ function projectPackageJson(project, projectsByName) {
   };
 }
 
-const projects = new fdir()
-  .withRelativePaths()
-  .exclude((d) => d === 'node_modules' || d === 'dist' || d === '.git')
-  .glob('**/project.json')
-  .crawl(path.join(ROOT, 'src'))
-  .sync()
-  .map((f) => {
-    const name = path.dirname(f);
-    return {
-      distDir: path.join(ROOT, 'dist', name),
-      name,
-      srcDir: path.join(ROOT, 'src', name),
-    };
-  });
-
-const projectsByName = projects.reduce((agg, p) => {
-  agg[p.name] = p;
-  return agg;
-}, {});
+const { projects, projectsByName } = findProjects(ROOT);
 
 await Promise.all(
   projects.map(async (p) => {

@@ -37,6 +37,7 @@ export { resolveTarget } from './resolve-target.js';
 export { build, builderForProject } from './build.js';
 export { deploy, deployerForProject } from './deploy.js';
 export { filesFromProject } from './files-from-project.js';
+export { transitiveProjects } from './transitive-projects.js';
 export { generateJsonSchema } from './generate-json-schema.js';
 export { findWorkspaceConfigPath, findWorkspaceRoot } from './find-workspace.js';
 export {
