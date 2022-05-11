@@ -80,6 +80,7 @@ export interface ProjectConfig {
     lint: string[];
   };
   deploy?: string;
+  distDir: string;
   // call filesFromProject to get sources and assets paths
   files: {
     assets: Glob;

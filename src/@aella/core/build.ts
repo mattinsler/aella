@@ -45,14 +45,14 @@ export async function build(project: ProjectConfig, opts: { deps?: boolean } = {
     const buildRes = await builder.build({ files: files[x], project: projects[x] });
     const copyRes = await copyAssets({ files: files[x], project: projects[x] });
 
-    const src = path.relative(projects[x].workspace.rootDir, projects[x].rootDir);
-    const dist = path.relative(projects[x].workspace.rootDir, path.join(projects[x].workspace.distDir, src));
+    // const src = path.relative(projects[x].workspace.rootDir, projects[x].rootDir);
+    // const dist = path.relative(projects[x].workspace.distDir, path.join(projects[x].workspace.distDir, src));
 
-    buildOutput.inputs.push(...buildRes.inputs.map((i) => path.join(src, i)));
-    buildOutput.inputs.push(...copyRes.inputs.map((i) => path.join(src, i)));
+    buildOutput.inputs.push(...buildRes.inputs.map((i) => path.join(projects[x].name, i)));
+    buildOutput.inputs.push(...copyRes.inputs.map((i) => path.join(projects[x].name, i)));
 
-    buildOutput.outputs.push(...buildRes.outputs.map((i) => path.join(dist, i)));
-    buildOutput.outputs.push(...copyRes.outputs.map((i) => path.join(dist, i)));
+    buildOutput.outputs.push(...buildRes.outputs.map((i) => path.join(projects[x].name, i)));
+    buildOutput.outputs.push(...copyRes.outputs.map((i) => path.join(projects[x].name, i)));
   });
 
   return buildOutput!;

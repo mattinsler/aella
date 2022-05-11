@@ -23,7 +23,7 @@ import type { Builder, Command, WorkspaceConfig } from '@aella/core';
 async function loadProjects(
   workspace: WorkspaceConfig
 ): Promise<Record<string, { builder: Builder; project: ProjectConfig }>> {
-  const configFiles = await findAllProjectConfigFiles(workspace);
+  const configFiles = (await findAllProjectConfigFiles(workspace)).sort();
   const projects: Record<string, { builder: Builder; project: ProjectConfig }> = {};
   configFiles.forEach((file) => {
     const project = loadProject(workspace, file);

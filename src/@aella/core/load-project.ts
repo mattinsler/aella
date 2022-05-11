@@ -138,6 +138,7 @@ const loadProjectFromFile = memo(function loadProjectFromFile(
   }
 
   const rootDir = path.dirname(configFile);
+  const name = path.relative(workspace.rootDir, rootDir);
 
   const res: ProjectConfig = {
     configFile,
@@ -145,11 +146,12 @@ const loadProjectFromFile = memo(function loadProjectFromFile(
       build: config.value.dependencies?.build || [],
       lint: config.value.dependencies?.lint || [],
     },
+    distDir: path.join(workspace.distDir, name),
     files: {
       assets: parseAssetsGlob(config.value.assets),
       sources: parseSrcsGlob(config.value.srcs),
     },
-    name: path.relative(workspace.rootDir, rootDir),
+    name,
     originalConfig,
     rootDir,
     targets: new Map(),

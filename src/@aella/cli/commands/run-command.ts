@@ -26,17 +26,10 @@ export const run: Command & {
   execute: () => Promise.reject(),
 
   createCommand({ file, project, target }) {
-    let entryFile: string;
-
-    if (file) {
-      entryFile = replaceExtension(file, '.js');
-    } else if (target) {
-      entryFile = replaceExtension(target.entry, '.js');
-    } else {
+    const entry = file ? file : target ? target.entry : undefined;
+    if (!entry) {
       throw new Error('No valid entrypoint to run.');
     }
-
-    entryFile = path.relative(project.workspace.rootDir, path.join(project.workspace.distDir, project.name, entryFile));
 
     return {
       aliases: ['r'],
@@ -44,13 +37,14 @@ export const run: Command & {
       name: 'run',
       description: 'Run a project',
       execute: async (workspace: WorkspaceConfig, argv: string[]) => {
-        const { outputs } = await build(project, { deps: true });
+        const { inputs, outputs } = await build(project, { deps: true });
 
-        if (!outputs.includes(entryFile)) {
-          throw new Error(`Cannot find the entrypoint ${entryFile}.`);
+        const idx = inputs.indexOf(path.join(project.name, entry));
+        if (idx === -1) {
+          throw new Error(`Cannot find the entrypoint ${entry}.`);
         }
 
-        const targetPath = path.join(workspace.rootDir, entryFile);
+        const targetPath = path.join(workspace.distDir, outputs[idx]);
 
         const { exitCode } = await execaNode(targetPath, argv, {
           cwd: process.cwd(),
