@@ -43,15 +43,24 @@ async function buildSandbox({
   );
 }
 
+import { createHash } from 'crypto';
+
+async function computeHash(rootDir: string, files: string[]) {
+  const hash = createHash('sha256');
+  const fileHashes = await Promise.all(files.sort().map((file) => fs.promises.readFile(path.join(rootDir, file))));
+  fileHashes.forEach((fileHash) => hash.update(fileHash));
+  return hash.digest('hex');
+}
+
 export async function deploy({ project, target }: DeployOptions): Promise<void> {
   if (!target) {
     throw new Error(`You must use @aella/deploy-docker with an executable target, not just a project.`);
   }
 
-  // const docker = new Docker();
-  // if (!(await isDockerIsRunning(docker))) {
-  //   throw new Error(`Docker is not currently running. Start docker and retry this command.`);
-  // }
+  const docker = new Docker();
+  if (!(await isDockerIsRunning(docker))) {
+    throw new Error(`Docker is not currently running. Start docker and retry this command.`);
+  }
 
   const { inputs, outputs } = await build(project, { deps: true });
   const entryIndex = inputs.indexOf(path.join(project.name, target.entry));
@@ -98,4 +107,29 @@ export async function deploy({ project, target }: DeployOptions): Promise<void> 
       'utf-8'
     ),
   ]);
+
+  const allFiles = [...outputs, 'package.json', 'yarn.lock', 'Dockerfile'];
+  const hash = await computeHash(sandboxDir, allFiles);
+
+  const tagName = `${project.name}/${target.name}:${hash}`;
+
+  console.log(`Building image with tag ${tagName}`);
+  const buildStream = await docker.buildImage(
+    {
+      context: sandboxDir,
+      src: allFiles,
+    },
+    { t: tagName }
+  );
+  const { id } = await new Promise((resolve, reject) => {
+    docker.modem.followProgress(buildStream, (err, res) => {
+      if (err) {
+        reject(err);
+      } else {
+        const id = res.find(({ aux }) => aux?.ID).aux.ID;
+        resolve({ id });
+      }
+    });
+  });
+  console.log(`Built image with ID ${id}`);
 }
