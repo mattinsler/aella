@@ -1,12 +1,10 @@
-import S from 'fluent-json-schema';
-
 import { deploy } from './deploy.js';
 export { deploy };
 
 import type { Plugin } from '@aella/core';
 
 export const plugin: Plugin = (ctx) => {
-  ctx.onWorkspaceConfig((config) => {
+  ctx.onWorkspaceConfig((config, S) => {
     config.deployers.push({
       deploy,
       name: '@aella/deploy-docker',

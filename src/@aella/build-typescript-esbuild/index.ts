@@ -1,5 +1,3 @@
-import S from 'fluent-json-schema';
-
 import { build } from './build.js';
 import { extractDependencies } from './extract-dependencies.js';
 export { build, extractDependencies };
@@ -7,7 +5,7 @@ export { build, extractDependencies };
 import type { Plugin } from '@aella/core';
 
 export const plugin: Plugin = (ctx) => {
-  ctx.onWorkspaceConfig((config) => {
+  ctx.onWorkspaceConfig((config, S) => {
     config.builders.push({
       build,
       extractDependencies,

@@ -8,7 +8,7 @@ export function deployerForProject(project: ProjectConfig) {
   }
 
   if (project.deploy) {
-    const deployer = deployers.find((b) => b.name === project.deploy);
+    const deployer = deployers.find((b) => b.name === project.deploy?.type);
     if (deployer) {
       return deployer;
     }

@@ -5,8 +5,8 @@ import { parse } from 'jsonc-parser';
 
 import type { Glob, ProjectConfig, WorkspaceConfig } from './types';
 
-import { Project } from './json-schema.js';
 import { loadTarget } from './load-target.js';
+import { Project, ProjectSchema } from './json-schema.js';
 import { findProjectConfigPath } from './find-project.js';
 
 // export const BASE_SCHEMA = joi.object({
@@ -126,6 +126,23 @@ function parseSrcsGlob(srcs?: string[] | Partial<Glob>): Glob {
   };
 }
 
+function parseDeploy(deploy: ProjectSchema['deploy']): ProjectConfig['deploy'] {
+  if (!deploy) {
+    return undefined;
+  }
+  if (typeof deploy === 'string') {
+    return {
+      type: deploy,
+      config: {},
+    };
+  }
+  const { type, ...config } = deploy;
+  return {
+    type,
+    config,
+  };
+}
+
 const loadProjectFromFile = memo(function loadProjectFromFile(
   workspace: WorkspaceConfig,
   configFile: string
@@ -146,6 +163,7 @@ const loadProjectFromFile = memo(function loadProjectFromFile(
       build: config.value.dependencies?.build || [],
       lint: config.value.dependencies?.lint || [],
     },
+    deploy: parseDeploy(config.value.deploy),
     distDir: path.join(workspace.distDir, name),
     files: {
       assets: parseAssetsGlob(config.value.assets),
@@ -158,7 +176,7 @@ const loadProjectFromFile = memo(function loadProjectFromFile(
     workspace,
   };
 
-  workspace.pluginHooks.onProjectConfig.forEach((p) => p(res, res.originalConfig));
+  workspace.pluginHooks.onProjectConfig.forEach((p) => p(res));
 
   for (const [targetName, targetData] of Object.entries(originalConfig.targets || {})) {
     res.targets.set(targetName, loadTarget(targetName, targetData as any, res));

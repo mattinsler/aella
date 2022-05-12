@@ -53,7 +53,7 @@ function projectPackageJson(project, projectsByName) {
     engines: {
       node: '>=14.13.1 || >=16.0.0',
     },
-    dependencies: project.deps.reduce((agg, dep) => {
+    dependencies: project.deps.sort().reduce((agg, dep) => {
       if (projectsByName[dep]) {
         // agg[dep] = path.relative(project.distDir, projectsByName[dep].distDir);
       } else if (DEPS[dep]) {

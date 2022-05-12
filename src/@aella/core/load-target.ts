@@ -20,7 +20,7 @@ export function loadTarget(targetName: string, targetData: Json, project: Projec
     project,
   };
 
-  project.workspace.pluginHooks.onTargetConfig.forEach((p) => p(res, res.originalConfig));
+  project.workspace.pluginHooks.onTargetConfig.forEach((p) => p(res));
 
   return res;
 }

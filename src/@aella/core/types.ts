@@ -1,10 +1,11 @@
+import type FluentJsonSchema from 'fluent-json-schema';
 import type { Project, Target, Workspace } from './json-schema';
 
 export type Json = string | number | boolean | null | Json[] | { [key: string]: Json };
 
-export type TargetPluginFn = (config: TargetConfig, targetData: any) => void;
-export type ProjectPluginFn = (config: ProjectConfig, projectData: any) => void;
-export type WorkspacePluginFn = (config: WorkspaceConfig, workspaceData: any) => void;
+export type TargetPluginFn = (config: TargetConfig) => void;
+export type ProjectPluginFn = (config: ProjectConfig) => void;
+export type WorkspacePluginFn = (config: WorkspaceConfig, fluentJsonSchema: typeof FluentJsonSchema) => void;
 
 export interface PluginContext {
   onProjectConfig: (fn: ProjectPluginFn) => void;
@@ -79,7 +80,10 @@ export interface ProjectConfig {
     build: string[];
     lint: string[];
   };
-  deploy?: string;
+  deploy?: {
+    type: string;
+    config: any;
+  };
   distDir: string;
   // call filesFromProject to get sources and assets paths
   files: {

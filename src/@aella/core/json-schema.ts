@@ -93,7 +93,7 @@ export interface ProjectSchema {
     build?: string[];
     lint?: string[];
   };
-  deploy?: (string | { type: string })[];
+  deploy?: string | { type: string; [key: string]: any };
   srcs?: GlobSchema;
   targets?: Record<string, TargetSchema>;
 }

@@ -1,14 +1,15 @@
 import fs from 'node:fs';
 import memo from 'memoizee';
 import path from 'node:path';
+import S from 'fluent-json-schema';
 import { parse } from 'jsonc-parser';
-import { createRequire } from 'node:module';
 
-import type { Plugin, WorkspaceConfig } from './types';
+import type { Plugin, PluginContext, WorkspaceConfig } from './types';
 
+import { loadPlugin } from './load-plugin.js';
 import { findWorkspaceConfigPath } from './find-workspace.js';
-import { generateJsonSchema } from './generate-json-schema.js';
 import { Project, Target, Workspace } from './json-schema.js';
+import { generateJsonSchema } from './generate-json-schema.js';
 
 export function createEmptyWorkspaceConfig(rootDir: string): WorkspaceConfig {
   return {
@@ -47,30 +48,13 @@ const loadWorkspaceFromFile = memo(
       throw new Error(`Could not validate workspace config file at ${file}: ${config.errors}.`);
     }
 
-    const plugins: Plugin[] = (
-      await Promise.all(
-        (config.value.plugins || []).map(async (p: string) => {
-          const raw = await import(createRequire(path.join(process.cwd(), 'noop.js')).resolve(p));
-          if (raw && raw.plugin) {
-            return raw.plugin;
-          }
-        })
-      )
-    ).filter(Boolean);
+    const plugins: Plugin[] = [];
 
     const pluginHooks: WorkspaceConfig['pluginHooks'] = {
       onProjectConfig: [],
       onTargetConfig: [],
       onWorkspaceConfig: [],
     };
-
-    for (const plugin of plugins) {
-      plugin({
-        onProjectConfig: (fn) => pluginHooks.onProjectConfig.push(fn),
-        onTargetConfig: (fn) => pluginHooks.onTargetConfig.push(fn),
-        onWorkspaceConfig: (fn) => pluginHooks.onWorkspaceConfig.push(fn),
-      });
-    }
 
     const rootDir = path.dirname(file);
 
@@ -96,7 +80,35 @@ const loadWorkspaceFromFile = memo(
       },
     };
 
-    pluginHooks.onWorkspaceConfig.forEach((p) => p(res, res.originalConfig));
+    const pluginsToRetry: string[] = [];
+    const pluginContext: PluginContext = {
+      onProjectConfig: (fn) => pluginHooks.onProjectConfig.push(fn),
+      onTargetConfig: (fn) => pluginHooks.onTargetConfig.push(fn),
+      onWorkspaceConfig: (fn) => {
+        pluginHooks.onWorkspaceConfig.push(fn);
+        fn(res, S);
+      },
+    };
+
+    for (const pluginPath of config.value.plugins || []) {
+      const plugin = await loadPlugin(res, pluginPath);
+      if (plugin) {
+        if (typeof plugin === 'string') {
+          pluginsToRetry.push(plugin);
+        } else {
+          plugins.push(plugin);
+          plugin(pluginContext);
+        }
+      }
+    }
+
+    for (const pluginPath of pluginsToRetry) {
+      const plugin = await loadPlugin(res, pluginPath);
+      if (plugin && typeof plugin !== 'string') {
+        plugins.push(plugin);
+        plugin(pluginContext);
+      }
+    }
 
     generateJsonSchema(res);
 
