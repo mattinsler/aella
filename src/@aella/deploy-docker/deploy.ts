@@ -111,7 +111,10 @@ export async function deploy({ project, target }: DeployOptions): Promise<void> 
   const allFiles = [...outputs, 'package.json', 'yarn.lock', 'Dockerfile'];
   const hash = await computeHash(sandboxDir, allFiles);
 
-  const tagName = `${project.name}/${target.name}:${hash}`;
+  const registry = project.deploy?.config.registry || project.name;
+  const repository = project.deploy?.config.repository || target.name;
+
+  const tagName = `${registry}/${repository}:${hash}`;
 
   console.log(`Building image with tag ${tagName}`);
   const buildStream = await docker.buildImage(

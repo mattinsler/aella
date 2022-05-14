@@ -15,6 +15,10 @@ export function createEmptyWorkspaceConfig(rootDir: string): WorkspaceConfig {
   return {
     builders: [],
     commands: [],
+    defaults: {
+      build: {},
+      deploy: {},
+    },
     deployers: [],
     distDir: path.join(rootDir, 'dist'),
     metaDir: path.join(rootDir, '.aella'),
@@ -39,14 +43,14 @@ export function createEmptyWorkspaceConfig(rootDir: string): WorkspaceConfig {
   };
 }
 
+function parseJsoncFile(file: string) {
+  const content = (fs.existsSync(file) && fs.readFileSync(file, 'utf-8')) || '{}';
+  return parse(content);
+}
+
 const loadWorkspaceFromFile = memo(
   async function loadWorkspaceFromFile(file: string): Promise<WorkspaceConfig> {
-    const originalConfig = parse(fs.readFileSync(file, 'utf-8'));
-    const config = Workspace.validate(originalConfig);
-
-    if (!config.valid) {
-      throw new Error(`Could not validate workspace config file at ${file}: ${config.errors}.`);
-    }
+    const originalConfig = parseJsoncFile(file);
 
     const plugins: Plugin[] = [];
 
@@ -61,15 +65,19 @@ const loadWorkspaceFromFile = memo(
     const res: WorkspaceConfig = {
       builders: [],
       commands: [],
+      defaults: {
+        build: {},
+        deploy: {},
+      },
       deployers: [],
-      distDir: config.value.distDir || path.join(rootDir, 'dist'),
+      distDir: originalConfig.distDir || path.join(rootDir, 'dist'),
       metaDir: path.join(rootDir, '.aella'),
       originalConfig,
       plugins,
       pluginHooks,
       project: {
         config: {
-          filename: config.value.project?.config?.filename || 'project.json',
+          filename: originalConfig.project?.config?.filename || 'project.json',
         },
       },
       rootDir,
@@ -90,7 +98,7 @@ const loadWorkspaceFromFile = memo(
       },
     };
 
-    for (const pluginPath of config.value.plugins || []) {
+    for (const pluginPath of originalConfig.plugins || []) {
       const plugin = await loadPlugin(res, pluginPath);
       if (plugin) {
         if (typeof plugin === 'string') {
@@ -108,6 +116,17 @@ const loadWorkspaceFromFile = memo(
         plugins.push(plugin);
         plugin(pluginContext);
       }
+    }
+
+    const config = Workspace.validate(res, originalConfig);
+
+    if (!config.valid) {
+      throw new Error(`Could not validate workspace config file at ${file}: ${config.errors}.`);
+    }
+
+    if (config.value.defaults) {
+      res.defaults.build = { ...config.value.defaults.build };
+      res.defaults.deploy = { ...config.value.defaults.deploy };
     }
 
     generateJsonSchema(res);

@@ -15,7 +15,7 @@ export function builderForProject(project: ProjectConfig) {
   }
 
   if (project.build) {
-    const builder = builders.find((b) => b.name === project.build);
+    const builder = builders.find((b) => b.name === project.build?.type);
     if (builder) {
       return builder;
     }

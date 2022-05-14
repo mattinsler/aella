@@ -3,10 +3,10 @@ import memo from 'memoizee';
 import path from 'node:path';
 import { parse } from 'jsonc-parser';
 
-import type { Glob, ProjectConfig, WorkspaceConfig } from './types';
+import type { CommandOptionsConfig, Glob, ProjectConfig, WorkspaceConfig } from './types';
 
 import { loadTarget } from './load-target.js';
-import { Project, ProjectSchema } from './json-schema.js';
+import { CommandOptionsSchema, Project } from './json-schema.js';
 import { findProjectConfigPath } from './find-project.js';
 
 // export const BASE_SCHEMA = joi.object({
@@ -126,21 +126,23 @@ function parseSrcsGlob(srcs?: string[] | Partial<Glob>): Glob {
   };
 }
 
-function parseDeploy(deploy: ProjectSchema['deploy']): ProjectConfig['deploy'] {
-  if (!deploy) {
+function parseCommandOptions(
+  options: CommandOptionsSchema | undefined,
+  defaults: { [typeName: string]: any }
+): CommandOptionsConfig | undefined {
+  if (!options) {
     return undefined;
   }
-  if (typeof deploy === 'string') {
-    return {
-      type: deploy,
-      config: {},
+
+  const res =
+    typeof options === 'string' ? { type: options, config: {} } : { type: options.type, config: options.config };
+  if (defaults[res.type]) {
+    res.config = {
+      ...defaults[res.type],
+      ...res.config,
     };
   }
-  const { type, ...config } = deploy;
-  return {
-    type,
-    config,
-  };
+  return res;
 }
 
 const loadProjectFromFile = memo(function loadProjectFromFile(
@@ -148,7 +150,7 @@ const loadProjectFromFile = memo(function loadProjectFromFile(
   configFile: string
 ): ProjectConfig {
   const originalConfig = fs.existsSync(configFile) ? parse(fs.readFileSync(configFile, 'utf-8')) : {};
-  const config = Project.validate(originalConfig);
+  const config = Project.validate(workspace, originalConfig);
 
   if (!config.valid) {
     throw new Error(`Could not validate project config file at ${configFile}: ${config.errors}.`);
@@ -158,12 +160,13 @@ const loadProjectFromFile = memo(function loadProjectFromFile(
   const name = path.relative(workspace.rootDir, rootDir);
 
   const res: ProjectConfig = {
+    build: parseCommandOptions(config.value.build, workspace.defaults.build),
     configFile,
     dependencies: {
       build: config.value.dependencies?.build || [],
       lint: config.value.dependencies?.lint || [],
     },
-    deploy: parseDeploy(config.value.deploy),
+    deploy: parseCommandOptions(config.value.deploy, workspace.defaults.deploy),
     distDir: path.join(workspace.distDir, name),
     files: {
       assets: parseAssetsGlob(config.value.assets),

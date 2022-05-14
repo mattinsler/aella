@@ -42,7 +42,7 @@ function updateVSCodeSettings(rootDir: string) {
   utils.writeFileSync(file, JSON.stringify(settings, null, 2), 'utf-8');
 }
 
-async function execute(workspace: Pick<WorkspaceConfig, 'metaDir' | 'rootDir' | 'schemas'>, argv: string[]) {
+async function execute(workspace: WorkspaceConfig, argv: string[]) {
   utils.writeFileSync(path.join(workspace.rootDir, 'workspace.json'), JSON.stringify({}, null, 2), 'utf-8');
   generateJsonSchema(workspace);
   updateVSCodeSettings(workspace.rootDir);

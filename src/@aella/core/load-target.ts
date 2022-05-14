@@ -5,7 +5,7 @@ import type { Json, ProjectConfig, TargetConfig } from './types';
 import { Target } from './json-schema.js';
 
 export function loadTarget(targetName: string, targetData: Json, project: ProjectConfig): TargetConfig {
-  const config = Target.validate(targetData);
+  const config = Target.validate(project.workspace, targetData);
 
   if (!config.valid) {
     throw new Error(`Could not validate target config for ${targetName} in project ${project.name}: ${config.errors}.`);

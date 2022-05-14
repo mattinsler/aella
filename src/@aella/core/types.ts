@@ -1,4 +1,5 @@
 import type FluentJsonSchema from 'fluent-json-schema';
+import type { ObjectSchema } from 'fluent-json-schema';
 import type { Project, Target, Workspace } from './json-schema';
 
 export type Json = string | number | boolean | null | Json[] | { [key: string]: Json };
@@ -40,6 +41,7 @@ export interface Builder {
   }>;
   extractDependencies?: (opts: BuildOptions) => Promise<Dependency[]>;
   name: string;
+  configSchema?: ObjectSchema;
 }
 
 export interface DeployOptions {
@@ -50,6 +52,7 @@ export interface DeployOptions {
 export interface Deployer {
   deploy(opts: DeployOptions): Promise<void>;
   name: string;
+  configSchema?: ObjectSchema;
 }
 
 export interface Command {
@@ -72,18 +75,20 @@ export interface Glob {
   };
 }
 
+export interface CommandOptionsConfig {
+  type: string;
+  config: any;
+}
+
 export interface ProjectConfig {
-  build?: string;
+  build?: CommandOptionsConfig;
   configFile: string;
   // other project names this project depends on
   dependencies: {
     build: string[];
     lint: string[];
   };
-  deploy?: {
-    type: string;
-    config: any;
-  };
+  deploy?: CommandOptionsConfig;
   distDir: string;
   // call filesFromProject to get sources and assets paths
   files: {
@@ -111,6 +116,10 @@ export interface TargetConfig {
 export interface WorkspaceConfig {
   builders: Builder[];
   commands: Command[];
+  defaults: {
+    build: { [builderType: string]: any };
+    deploy: { [deployerType: string]: any };
+  };
   deployers: Deployer[];
   distDir: string;
   metaDir: string;

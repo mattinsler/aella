@@ -19,17 +19,17 @@ function ensureMetaDir(workspace: Pick<WorkspaceConfig, 'metaDir'>) {
   }
 }
 
-export function generateJsonSchema(workspace: Pick<WorkspaceConfig, 'metaDir' | 'schemas'>) {
+export function generateJsonSchema(workspace: WorkspaceConfig) {
   ensureMetaDir(workspace);
 
   writeFileSync(
     path.join(workspace.metaDir, 'project.schema.json'),
-    JSON.stringify(workspace.schemas.project.schema.toJSON(), null, 2),
+    JSON.stringify(workspace.schemas.project.schema(workspace).toJSON(), null, 2),
     'utf-8'
   );
   writeFileSync(
     path.join(workspace.metaDir, 'workspace.schema.json'),
-    JSON.stringify(workspace.schemas.workspace.schema.toJSON(), null, 2),
+    JSON.stringify(workspace.schemas.workspace.schema(workspace).toJSON(), null, 2),
     'utf-8'
   );
 }

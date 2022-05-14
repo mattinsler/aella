@@ -8,17 +8,7 @@ export const plugin: Plugin = (ctx) => {
     config.deployers.push({
       deploy,
       name: '@aella/deploy-docker',
+      configSchema: S.object().prop('repository', S.string()).prop('registry', S.string()),
     });
-
-    config.schemas.project.deploySchemas.push(
-      S.string().enum(['@aella/deploy-docker']),
-      S.object()
-        .prop('type', S.string().enum(['@aella/deploy-docker']))
-        .prop('repository', S.string())
-        .prop('registry', S.string())
-    );
-
-    // defaults....
-    // config.schemas.workspace.
   });
 };
