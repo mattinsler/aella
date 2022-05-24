@@ -6,3 +6,4 @@ export * from './help-command.js';
 export * from './init-command.js';
 export * from './list-command.js';
 export * from './run-command.js';
+export * from './test-command.js';

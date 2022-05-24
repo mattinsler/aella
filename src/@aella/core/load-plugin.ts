@@ -43,7 +43,7 @@ export async function loadPlugin(workspace: WorkspaceConfig, pluginPath: string)
           return resolvedPluginPath;
         }
 
-        await build(project, { deps: true });
+        await build({ project, deps: true });
         const raw = await import(path.join(project.distDir, 'index.js'));
         if (raw && raw.plugin) {
           return raw.plugin;

@@ -1,5 +1,6 @@
 import Ajv from 'ajv';
 import S from 'fluent-json-schema';
+import betterAjvErrors from 'better-ajv-errors';
 
 import type { ErrorObject } from 'ajv';
 import type { JSONSchema } from 'fluent-json-schema';
@@ -17,6 +18,7 @@ export interface Schema<T = any> {
   ):
     | {
         errors: ErrorObject<string, Record<string, any>, unknown>[] | null | undefined;
+        formattedErrors: string;
         valid: false;
       }
     | {
@@ -47,6 +49,7 @@ export function createSchema<T>(config: { schema: (workspace: WorkspaceConfig) =
 
       return {
         errors: validator.errors,
+        formattedErrors: betterAjvErrors(config.schema(workspace), value, validator.errors!),
         valid: false,
       };
     },
@@ -108,6 +111,7 @@ export interface ProjectSchema {
   deploy?: CommandOptionsSchema;
   srcs?: GlobSchema;
   targets?: Record<string, TargetSchema>;
+  test?: boolean;
 }
 
 export const Project = createSchema<ProjectSchema>({
@@ -146,7 +150,8 @@ export const Project = createSchema<ProjectSchema>({
       )
       .prop('deploy', S.oneOf(deploySchemas))
       .prop('srcs', Glob.schema(workspace))
-      .prop('targets', S.object().additionalProperties(Target.schema(workspace)));
+      .prop('targets', S.object().additionalProperties(Target.schema(workspace)))
+      .prop('test', S.boolean());
   },
 });
 

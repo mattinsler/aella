@@ -2,16 +2,20 @@ import { loadProject } from './load-project.js';
 
 import type { ProjectConfig } from './types';
 
-export function transitiveProjects(project: ProjectConfig, transitiveType: 'build' | 'lint') {
-  const { workspace } = project;
-  const projects = new Map<string, ProjectConfig>();
-  const queue = [project];
+export function transitiveProjects(projects: ProjectConfig[], transitiveType: 'build' | 'lint') {
+  if (projects.length === 0) {
+    return [];
+  }
+
+  const { workspace } = projects[0];
+  const projectsMap = new Map<string, ProjectConfig>();
+  const queue = [...projects];
 
   while (queue.length) {
     const current = queue.shift()!;
-    projects.set(current.name, current);
+    projectsMap.set(current.name, current);
     current.dependencies[transitiveType].forEach((depName) => {
-      if (depName.startsWith('//') && !projects.has(depName.slice(2))) {
+      if (depName.startsWith('//') && !projectsMap.has(depName.slice(2))) {
         const dep = loadProject(workspace, depName.slice(2));
         if (dep) {
           queue.push(dep);
@@ -20,5 +24,5 @@ export function transitiveProjects(project: ProjectConfig, transitiveType: 'buil
     });
   }
 
-  return Array.from(projects.values());
+  return Array.from(projectsMap.values());
 }

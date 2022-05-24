@@ -1,4 +1,5 @@
 import 'source-map-support/register.js';
+import 'v8-compile-cache';
 
 import chalk from 'chalk';
 import {
@@ -10,9 +11,9 @@ import {
 
 import type { WorkspaceConfig } from '@aella/core';
 
-import { affected, build, deploy, fix, help, init, list, run } from './commands/index.js';
+import { affected, build, deploy, fix, help, init, list, run, test } from './commands/index.js';
 
-const DEFAULT_COMMANDS = [run, affected, build, deploy, fix, init, list, help];
+const DEFAULT_COMMANDS = [run, affected, build, test, deploy, fix, init, list, help];
 
 function findCommand(workspace: WorkspaceConfig, value: string) {
   return workspace.commands.find((command) => {
@@ -71,7 +72,7 @@ export async function main(argv: string[]) {
   } catch (err) {
     console.error(`${chalk.red.bold('[ERROR]')} ${errorText(err)}`);
     if (process.env.DEBUG && err instanceof Error) {
-      console.error(err.stack);
+      console.error(err);
     }
     process.exitCode = 1;
   } finally {

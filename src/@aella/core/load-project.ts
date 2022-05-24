@@ -6,8 +6,8 @@ import { parse } from 'jsonc-parser';
 import type { CommandOptionsConfig, Glob, ProjectConfig, WorkspaceConfig } from './types';
 
 import { loadTarget } from './load-target.js';
-import { CommandOptionsSchema, Project } from './json-schema.js';
 import { findProjectConfigPath } from './find-project.js';
+import { CommandOptionsSchema, Project } from './json-schema.js';
 
 // export const BASE_SCHEMA = joi.object({
 //   assets: joi.alternatives(
@@ -153,6 +153,7 @@ const loadProjectFromFile = memo(function loadProjectFromFile(
   const config = Project.validate(workspace, originalConfig);
 
   if (!config.valid) {
+    console.log(config.formattedErrors);
     throw new Error(`Could not validate project config file at ${configFile}: ${config.errors}.`);
   }
 
@@ -176,6 +177,7 @@ const loadProjectFromFile = memo(function loadProjectFromFile(
     originalConfig,
     rootDir,
     targets: new Map(),
+    test: config.value.test || false,
     workspace,
   };
 

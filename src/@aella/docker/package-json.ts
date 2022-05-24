@@ -26,7 +26,7 @@ function createPackageJsonDependencies(projects: ProjectConfig[], pkg: any): Rec
 
 export function buildPackageJson(project: ProjectConfig) {
   const pkg = JSONC.parse(fs.readFileSync(path.join(project.workspace.rootDir, 'package.json'), 'utf-8'));
-  const projects = transitiveProjects(project, 'build');
+  const projects = transitiveProjects([project], 'build');
   const dependencies = createPackageJsonDependencies(projects, pkg);
 
   const pkgJson: Record<string, any> = {

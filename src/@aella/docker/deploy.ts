@@ -54,7 +54,7 @@ async function computeHash(rootDir: string, files: string[]) {
 
 export async function deploy({ project, target }: DeployOptions): Promise<void> {
   if (!target) {
-    throw new Error(`You must use @aella/deploy-docker with an executable target, not just a project.`);
+    throw new Error(`You must use @aella/docker with an executable target, not just a project.`);
   }
 
   const docker = new Docker();
@@ -62,7 +62,7 @@ export async function deploy({ project, target }: DeployOptions): Promise<void> 
     throw new Error(`Docker is not currently running. Start docker and retry this command.`);
   }
 
-  const { inputs, outputs } = await build(project, { deps: true });
+  const { inputs, outputs } = await build({ project, deps: true });
   const entryIndex = inputs.indexOf(path.join(project.name, target.entry));
   if (entryIndex === -1) {
     throw new Error(`Cannot find target entry file in build inputs (${path.join(project.name, target.entry)}).`);

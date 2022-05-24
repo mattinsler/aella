@@ -1,19 +1,15 @@
 import path from 'node:path';
 import esbuild from 'esbuild';
 
-import type { BuildOptions } from '@aella/core';
+import type { BuildProjectOptions, BuildProjectResult } from '@aella/core';
 
 import { LOADERS } from './loaders.js';
 import { plugin } from './build-plugin.js';
 import { replaceExtension } from './utils.js';
 
-interface Context {
-  // logger?
-}
-
 const SUPPORTED_EXTENSIONS = new Set(Object.keys(LOADERS));
 
-export async function buildCode({ files, project }: BuildOptions, context: Context) {
+export async function buildProject({ files, project }: BuildProjectOptions): Promise<BuildProjectResult> {
   const tsconfig = path.join(project.rootDir, 'tsconfig.json');
 
   const inputs = files.sources.filter(
@@ -37,9 +33,6 @@ export async function buildCode({ files, project }: BuildOptions, context: Conte
   return {
     inputs,
     outputs,
+    project,
   };
-}
-
-export async function build(opts: BuildOptions) {
-  return await buildCode(opts, {});
 }

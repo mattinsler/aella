@@ -4,7 +4,7 @@ import nanomatch from 'nanomatch';
 
 import type { ExcludeFn, FilterFn } from 'fdir';
 
-function toDirectoryMatcher(dir: string, patterns: string[]) {
+function toExcludeDirectoryMatcher(dir: string, patterns: string[]) {
   patterns = patterns.map((pattern) => {
     if (!pattern.endsWith('/')) {
       pattern = pattern + '/';
@@ -24,7 +24,7 @@ function toDirectoryMatcher(dir: string, patterns: string[]) {
   };
 }
 
-function toFileMatcher(dir: string, patterns: string[]) {
+function toFilterFileMatcher(dir: string, patterns: string[]) {
   patterns = patterns.map((pattern) => {
     if (pattern.startsWith('/')) {
       return path.join(dir, pattern);
@@ -37,6 +37,26 @@ function toFileMatcher(dir: string, patterns: string[]) {
 
   return (filePath: string, isDirectory: boolean): boolean => {
     return !isDirectory && matcher(filePath);
+  };
+}
+
+function toFilterDirectoryMatcher(dir: string, patterns: string[]) {
+  patterns = patterns.map((pattern) => {
+    if (!pattern.endsWith('/')) {
+      pattern = pattern + '/';
+    }
+
+    if (pattern.startsWith('/')) {
+      return path.join(dir, pattern);
+    }
+
+    return path.join(dir, '**', pattern);
+  });
+
+  const matcher = nanomatch.matcher(patterns);
+
+  return (filePath: string, isDirectory: boolean): boolean => {
+    return isDirectory && matcher(filePath);
   };
 }
 
@@ -75,7 +95,7 @@ export function glob(dir: string, options: GlobOptions) {
   }
 
   if (options.exclude && options.exclude.directories) {
-    addExcludeFunction(toDirectoryMatcher(dir, options.exclude.directories));
+    addExcludeFunction(toExcludeDirectoryMatcher(dir, options.exclude.directories));
   }
 
   // if (options.exclude.files) {
@@ -84,7 +104,11 @@ export function glob(dir: string, options: GlobOptions) {
   // }
 
   if (options.include && options.include.files) {
-    addFilterFunction(toFileMatcher(dir, options.include.files));
+    addFilterFunction(toFilterFileMatcher(dir, options.include.files));
+  }
+  if (options.include && options.include.directories) {
+    api = api.withDirs();
+    addFilterFunction(toFilterDirectoryMatcher(dir, options.include.directories));
   }
 
   // if (opts.exclude) {

@@ -7,7 +7,7 @@ export const plugin: Plugin = (ctx) => {
   ctx.onWorkspaceConfig((config, S) => {
     config.deployers.push({
       deploy,
-      name: '@aella/deploy-docker',
+      name: '@aella/docker',
       configSchema: S.object().prop('repository', S.string()).prop('registry', S.string()),
     });
   });

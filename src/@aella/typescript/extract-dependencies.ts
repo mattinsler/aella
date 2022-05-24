@@ -3,14 +3,14 @@ import path from 'node:path';
 import esbuild from 'esbuild';
 import { parse } from 'jsonc-parser';
 
-import type { BuildOptions, Dependency } from '@aella/core';
+import type { BuildProjectOptions, Dependency } from '@aella/core';
 
 import { LOADERS } from './loaders.js';
 import { plugin } from './extract-dependencies-plugin.js';
 
 const SUPPORTED_EXTENSIONS = new Set(Object.keys(LOADERS));
 
-export async function extractDependencies({ files, project }: BuildOptions): Promise<Dependency[]> {
+export async function extractDependencies({ files, project }: BuildProjectOptions): Promise<Dependency[]> {
   // const tsconfig = path.join(project.rootDir, 'tsconfig.json');
   const pkg = parse(await fs.promises.readFile(path.join(project.workspace.rootDir, 'package.json'), 'utf-8'));
   const inputs = files.sources.filter(
@@ -24,9 +24,7 @@ export async function extractDependencies({ files, project }: BuildOptions): Pro
     ...Object.keys(pkg.peerDependencies || {}),
   ];
 
-  const extract = plugin({
-    workspaceRootDir: project.workspace.rootDir,
-  });
+  const extract = plugin(project.workspace);
 
   // TODO: handle errors and warnings
   await esbuild.build({

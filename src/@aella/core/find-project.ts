@@ -41,7 +41,7 @@ export async function findProjectNameFromFilePath(workspace: WorkspaceConfig, fi
 }
 
 export function findProjectNameFromFilePathSync(workspace: WorkspaceConfig, filePath: string) {
-  const projectConfigFilePath = escaladeSync(filePath, (_dir, filenames) => {
+  const projectConfigFilePath = escaladeSync(path.resolve(filePath), (_dir, filenames) => {
     if (filenames.includes(workspace.project.config.filename)) {
       return workspace.project.config.filename;
     }
@@ -50,13 +50,53 @@ export function findProjectNameFromFilePathSync(workspace: WorkspaceConfig, file
   return projectConfigFilePath ? path.relative(workspace.rootDir, path.dirname(projectConfigFilePath)) : null;
 }
 
-export function findAllProjectConfigFiles(workspace: WorkspaceConfig): Promise<string[]> {
+export function findAllProjectConfigFiles(workspace: WorkspaceConfig, rootPath?: string): Promise<string[]> {
   const config = {
     exclude: {
       directories: ['.git', 'node_modules', '__generated__'],
     },
     include: {
       files: [workspace.project.config.filename],
+    },
+  };
+
+  let rootDir;
+  if (rootPath) {
+    if (path.isAbsolute(rootPath)) {
+      rootPath = path.resolve(rootPath);
+      if (path.relative(workspace.rootDir, rootPath).startsWith('.')) {
+        throw new Error();
+      }
+      rootDir = rootPath;
+    } else {
+      rootDir = path.resolve(workspace.rootDir, rootPath);
+    }
+    const stat = fs.statSync(rootDir);
+    if (!stat.isDirectory()) {
+      rootDir = path.dirname(rootDir);
+    }
+  } else {
+    rootDir = workspace.rootDir;
+  }
+
+  const relativeDist = path.relative(rootDir, workspace.distDir);
+  if (!relativeDist.startsWith('..')) {
+    config.exclude.directories.push('/' + relativeDist);
+  }
+
+  const globber = glob(rootDir, config);
+  globber.exclude((_dirName, dirPath) => fs.existsSync(path.join(dirPath, WORKSPACE_FILENAME)));
+
+  return globber.async();
+}
+
+export function findAllTestDirectories(workspace: WorkspaceConfig): Promise<string[]> {
+  const config = {
+    exclude: {
+      directories: ['.git', 'node_modules', '__generated__'],
+    },
+    include: {
+      directories: ['__tests__'],
     },
   };
 

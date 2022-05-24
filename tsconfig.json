@@ -2,16 +2,19 @@
   "files": [],
   "references": [
     {
-      "path": "src/@aella/build-typescript-esbuild/tsconfig.json"
-    },
-    {
       "path": "src/@aella/cli/tsconfig.json"
     },
     {
       "path": "src/@aella/core/tsconfig.json"
     },
     {
-      "path": "src/@aella/deploy-docker/tsconfig.json"
+      "path": "src/@aella/docker/tsconfig.json"
+    },
+    {
+      "path": "src/@aella/jest/tsconfig.json"
+    },
+    {
+      "path": "src/@aella/typescript/tsconfig.json"
     }
   ]
 }

@@ -17,7 +17,7 @@ export function replaceExtension(file: string, desiredExtension: string) {
 }
 
 export const run: Command & {
-  createCommand(opts: { file: string | null; project: ProjectConfig; target: TargetConfig | null }): Command;
+  createCommand(opts: { file?: string; project: ProjectConfig; target?: TargetConfig }): Command;
 } = {
   aliases: [],
   args: ['PROJECT[:TARGET]'],
@@ -26,8 +26,8 @@ export const run: Command & {
   execute: () => Promise.reject(),
 
   createCommand({ file, project, target }) {
-    const entry = file ? file : target ? target.entry : undefined;
-    if (!entry) {
+    // const entry = file ? file : target ? target.entry : undefined;
+    if (!(target || file)) {
       throw new Error('No valid entrypoint to run.');
     }
 
@@ -37,16 +37,26 @@ export const run: Command & {
       name: 'run',
       description: 'Run a project',
       execute: async (workspace: WorkspaceConfig, argv: string[]) => {
-        const { inputs, outputs } = await build(project, { deps: true });
-
-        const idx = inputs.indexOf(path.join(project.name, entry));
-        if (idx === -1) {
-          throw new Error(`Cannot find the entrypoint ${entry}.`);
+        if (!target) {
+          target = {
+            assets: [],
+            entry: file!,
+            isDefault: false,
+            name: file!,
+            originalConfig: {},
+            project,
+          };
         }
+        const { sandboxDir } = await build({ target });
 
-        const targetPath = path.join(workspace.distDir, outputs[idx]);
+        // const idx = inputs.indexOf(path.join(project.name, entry));
+        // if (idx === -1) {
+        //   throw new Error(`Cannot find the entrypoint ${entry}.`);
+        // }
 
-        const { exitCode } = await execaNode(targetPath, argv, {
+        // const targetPath = path.join(workspace.distDir, outputs[idx]);
+
+        const { exitCode } = await execaNode(sandboxDir, argv, {
           cwd: process.cwd(),
           nodeOptions: ['--require', SOURCE_MAP_SUPPORT],
           stdio: 'inherit',

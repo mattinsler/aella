@@ -23,9 +23,9 @@ export function resolveTarget(
   workspace: WorkspaceConfig,
   value: string
 ): {
-  file: null | string;
-  project: null | ProjectConfig;
-  target: null | TargetConfig;
+  file?: string;
+  project?: ProjectConfig;
+  target?: TargetConfig;
 } {
   const stat = fs.statSync(value, { throwIfNoEntry: false });
   if (stat && stat.isFile()) {
@@ -35,7 +35,6 @@ export function resolveTarget(
       return {
         file: path.relative(project.rootDir, path.resolve(value)),
         project,
-        target: null,
       };
     }
   }
@@ -44,12 +43,11 @@ export function resolveTarget(
   const project = loadProject(workspace, parsed.project);
 
   if (!project) {
-    return { file: null, project: null, target: null };
+    return {};
   }
 
   return {
-    file: null,
     project,
-    target: project.targets.get(parsed.target) || null,
+    target: project.targets.get(parsed.target),
   };
 }

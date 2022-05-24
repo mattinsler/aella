@@ -12,6 +12,8 @@ import { Project, Target, Workspace } from './json-schema.js';
 import { generateJsonSchema } from './generate-json-schema.js';
 
 export function createEmptyWorkspaceConfig(rootDir: string): WorkspaceConfig {
+  rootDir = path.resolve(rootDir);
+
   return {
     builders: [],
     commands: [],

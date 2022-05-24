@@ -5,6 +5,7 @@ import {
   builderForProject,
   filesFromProject,
   findAllProjectConfigFiles,
+  findAllTestDirectories,
   findProjectNameFromFilePathSync,
   loadProject,
   utils,
@@ -55,6 +56,8 @@ async function analyzeDependencies(
                   ...dep,
                   value: `//${projectName}`,
                 };
+              } else {
+                console.log(dep.value);
               }
             }
             return dep;
@@ -96,7 +99,15 @@ async function updateTsConfigBase(workspace: WorkspaceConfig, projects: ProjectC
     tsconfigBase.compilerOptions = {};
   }
   tsconfigBase.compilerOptions.baseUrl = path.relative(workspace.rootDir, baseUrl) || '.';
-  tsconfigBase.compilerOptions.paths = {};
+  if (tsconfigBase.compilerOptions.paths) {
+    Object.keys(tsconfigBase.compilerOptions.paths)
+      .filter((key) => key.startsWith('//'))
+      .forEach((key) => {
+        delete tsconfigBase.compilerOptions.paths[key];
+      });
+  } else {
+    tsconfigBase.compilerOptions.paths = {};
+  }
   projects.forEach((project) => {
     tsconfigBase.compilerOptions.paths[`//${project.name}`] = [path.relative(baseUrl, project.rootDir)];
   });
@@ -113,8 +124,18 @@ async function updateTsConfig(project: ProjectConfig, deps: ProjectConfig['depen
 
   tsconfig.extends = path.relative(project.rootDir, path.join(project.workspace.rootDir, 'tsconfig.base.json'));
 
+  if (project.test) {
+    if (!tsconfig.compilerOptions) {
+      tsconfig.compilerOptions = {};
+    }
+    const types = new Set(tsconfig.compilerOptions.types || []);
+    types.add('jest');
+    tsconfig.compilerOptions.types = Array.from(types).sort();
+  }
+
   tsconfig.references = deps.lint
     .filter((dep) => dep.startsWith('//'))
+    .sort()
     .map((dep) => ({
       path: path.relative(project.rootDir, path.join(project.workspace.rootDir, dep.slice(2))),
     }));
@@ -124,6 +145,10 @@ async function updateTsConfig(project: ProjectConfig, deps: ProjectConfig['depen
 
 async function updateProjectConfig(project: ProjectConfig, deps: ProjectConfig['dependencies']) {
   const config = JSON.parse(await fs.promises.readFile(project.configFile, 'utf-8'));
+
+  if (project.test || project.name.endsWith('/__tests__')) {
+    config.test = true;
+  }
 
   const build = deps.build.filter((dep) => !dep.startsWith('.')).sort();
   const lint = deps.lint.filter((dep) => !dep.startsWith('.')).sort();
@@ -138,17 +163,35 @@ async function updateProjectConfig(project: ProjectConfig, deps: ProjectConfig['
 }
 
 async function execute(workspace: WorkspaceConfig, argv: string[]) {
-  const projects = await loadProjects(workspace);
+  const [projects, testDirectories] = await Promise.all([loadProjects(workspace), findAllTestDirectories(workspace)]);
+
+  testDirectories.forEach((dir) => {
+    const projectConfigFile = path.join(dir, workspace.project.config.filename);
+    if (!fs.existsSync(projectConfigFile)) {
+      utils.writeFileSync(projectConfigFile, '{}', 'utf-8');
+      const project = loadProject(workspace, projectConfigFile);
+      projects[project.name] = {
+        builder: builderForProject(project),
+        project,
+      };
+    }
+  });
+
   const depsByProject = await analyzeDependencies(projects);
 
   await Promise.all([
     updateRootTsconfig(
       workspace,
-      Object.values(projects).map(({ project }) => project)
+      Object.values(projects)
+        .map(({ project }) => project)
+        .sort()
     ),
     updateTsConfigBase(
       workspace,
-      Object.values(projects).map(({ project }) => project)
+      Object.values(projects)
+        .filter(({ project }) => !project.test)
+        .map(({ project }) => project)
+        .sort()
     ),
     ...Object.values(projects).map(({ project }) => updateTsConfig(project, depsByProject[project.name])),
     ...Object.values(projects).map(({ project }) => updateProjectConfig(project, depsByProject[project.name])),

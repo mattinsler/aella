@@ -72,7 +72,7 @@ function transformTsconfigPathsMiddleware(rootDir: string): Middleware {
     loadConfigRes.addMatchAll
   );
 
-  const extensions = Object.keys(LOADERS);
+  const extensions = Array.from(SUPPORTED_EXTENSIONS);
 
   return ({ contents, file }) => {
     const imports = parseImportsWithLocation(contents, file);
@@ -98,7 +98,7 @@ export function plugin(rootDir: string): esbuild.Plugin {
   const middleware = [transformTsconfigPathsMiddleware(rootDir), ensureEsmImportsMiddleware(rootDir)];
 
   return {
-    name: '@aella/build-typescript-esbuild/build',
+    name: '@aella/typescript/build',
     setup(build) {
       build.onLoad({ filter: FILE_PREFIX_RX }, async (args) => {
         const file = args.path;

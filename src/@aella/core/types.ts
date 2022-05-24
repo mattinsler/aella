@@ -25,21 +25,35 @@ export interface Dependency {
   value: string;
 }
 
-export interface BuildOptions {
+export interface BuildProjectOptions {
   files: {
     assets: string[];
     sources: string[];
   };
   project: ProjectConfig;
-  target?: TargetConfig;
+}
+
+export interface BuildProjectResult {
+  inputs: string[];
+  outputs: string[];
+  project: ProjectConfig;
+}
+
+export interface BuildTargetOptions {
+  files: BuildProjectResult;
+  projects: ProjectConfig[];
+  target: TargetConfig;
+}
+
+export interface BuildTargetResult {
+  sandboxDir: string;
+  target: TargetConfig;
 }
 
 export interface Builder {
-  build: (opts: BuildOptions) => Promise<{
-    inputs: string[];
-    outputs: string[];
-  }>;
-  extractDependencies?: (opts: BuildOptions) => Promise<Dependency[]>;
+  buildProject: (opts: BuildProjectOptions) => Promise<BuildProjectResult>;
+  buildTarget: (opts: BuildTargetOptions) => Promise<BuildTargetResult>;
+  extractDependencies?: (opts: BuildProjectOptions) => Promise<Dependency[]>;
   name: string;
   configSchema?: ObjectSchema;
 }
@@ -100,6 +114,7 @@ export interface ProjectConfig {
   originalConfig: Json;
   rootDir: string;
   targets: Map<string, TargetConfig>;
+  test: boolean;
   workspace: WorkspaceConfig;
 }
 
