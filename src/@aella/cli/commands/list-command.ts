@@ -1,9 +1,9 @@
 import os from 'node:os';
 import { findAllProjectConfigFiles, loadProject } from '@aella/core';
 
-import type { Command, WorkspaceConfig } from '@aella/core';
+import type { WorkspaceConfig } from '@aella/core';
 
-async function execute(workspace: WorkspaceConfig, argv: string[]) {
+export async function execute(workspace: WorkspaceConfig, argv: string[]) {
   const configFiles = await findAllProjectConfigFiles(workspace);
   const projects = configFiles.map((file) => loadProject(workspace, file));
 
@@ -25,11 +25,3 @@ async function execute(workspace: WorkspaceConfig, argv: string[]) {
 
   return 0;
 }
-
-export const list: Command = {
-  aliases: ['ls'],
-  args: ['[projects|targets]'],
-  execute,
-  name: 'list',
-  description: 'List available commands',
-};

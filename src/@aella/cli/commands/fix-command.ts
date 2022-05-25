@@ -12,7 +12,7 @@ import {
   ProjectConfig,
 } from '@aella/core';
 
-import type { Builder, Command, WorkspaceConfig } from '@aella/core';
+import type { Builder, WorkspaceConfig } from '@aella/core';
 
 // x root tsconfig.json has all projects referenced
 // x tsconfig.base.json has paths to projects (maybe?)
@@ -162,7 +162,7 @@ async function updateProjectConfig(project: ProjectConfig, deps: ProjectConfig['
   await utils.writeFile(project.configFile, JSON.stringify(config, null, 2), 'utf-8');
 }
 
-async function execute(workspace: WorkspaceConfig, argv: string[]) {
+export async function execute(workspace: WorkspaceConfig, argv: string[]) {
   const [projects, testDirectories] = await Promise.all([loadProjects(workspace), findAllTestDirectories(workspace)]);
 
   testDirectories.forEach((dir) => {
@@ -199,11 +199,3 @@ async function execute(workspace: WorkspaceConfig, argv: string[]) {
 
   return 0;
 }
-
-export const fix: Command = {
-  aliases: [],
-  args: [],
-  execute,
-  name: 'fix',
-  description: 'Analyze code and fix config files',
-};

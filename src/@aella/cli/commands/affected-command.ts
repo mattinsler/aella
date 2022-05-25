@@ -1,6 +1,6 @@
 import { findAllProjectConfigFiles, findProjectNameFromFilePath, loadProject } from '@aella/core';
 
-import type { Command, ProjectConfig, WorkspaceConfig } from '@aella/core';
+import type { ProjectConfig, WorkspaceConfig } from '@aella/core';
 
 function buildInverseDependencyMap(projectsByName: Record<string, ProjectConfig>): Record<string, ProjectConfig[]> {
   const map: Record<string, ProjectConfig[]> = {};
@@ -50,7 +50,7 @@ function transitiveProjectNamesByDepsFrom(
   return Array.from(transitiveProjectNames);
 }
 
-async function execute(workspace: WorkspaceConfig, argv: string[]) {
+export async function execute(workspace: WorkspaceConfig, argv: string[]) {
   const projectNames = Array.from(
     new Set(
       (await Promise.all(argv.map((file) => findProjectNameFromFilePath(workspace, file)))).filter(Boolean) as string[]
@@ -69,11 +69,3 @@ async function execute(workspace: WorkspaceConfig, argv: string[]) {
 
   return 0;
 }
-
-export const affected: Command = {
-  aliases: [],
-  args: ['FILES...'],
-  execute,
-  name: 'affected',
-  description: 'List projects affected by files',
-};

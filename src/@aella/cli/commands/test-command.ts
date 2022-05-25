@@ -3,7 +3,7 @@ import path from 'node:path';
 import { runCLI } from '@jest/core';
 import { build, findAllProjectConfigFiles, loadProject } from '@aella/core';
 
-import type { Command, TargetConfig, WorkspaceConfig } from '@aella/core';
+import type { TargetConfig, WorkspaceConfig } from '@aella/core';
 
 async function resolveProjects(workspace: WorkspaceConfig, argv: string[]) {
   let projects;
@@ -17,7 +17,7 @@ async function resolveProjects(workspace: WorkspaceConfig, argv: string[]) {
   return projects.filter((project) => project.test);
 }
 
-async function execute(workspace: WorkspaceConfig, argv: string[]) {
+export async function execute(workspace: WorkspaceConfig, argv: string[]) {
   const projects = await resolveProjects(workspace, argv);
 
   if (projects.length === 0) {
@@ -135,11 +135,3 @@ async function execute(workspace: WorkspaceConfig, argv: string[]) {
 
   return 0;
 }
-
-export const test: Command = {
-  aliases: [],
-  args: ['PROJECT'],
-  execute,
-  name: 'test',
-  description: 'Test a project',
-};

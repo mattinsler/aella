@@ -1,5 +1,5 @@
-import 'source-map-support/register.js';
 import 'v8-compile-cache';
+import 'source-map-support/register.js';
 
 import chalk from 'chalk';
 import {
@@ -58,7 +58,7 @@ export async function main(argv: string[]) {
       if (command == null) {
         const { file, project, target } = resolveTarget(workspace, argv[0]);
         if (project && (file || target)) {
-          command = run.createCommand({ file, project, target });
+          command = await run.createCommand({ file, project, target });
         }
       }
     }

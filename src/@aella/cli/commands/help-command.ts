@@ -1,11 +1,10 @@
 import fs from 'node:fs';
 import os from 'node:os';
 import chalk from 'chalk';
-import path from 'node:path';
 import escalade from 'escalade/sync';
 import { fileURLToPath } from 'node:url';
 
-import type { Command, WorkspaceConfig } from '@aella/core';
+import type { WorkspaceConfig } from '@aella/core';
 
 const PKG = JSON.parse(
   fs.readFileSync(
@@ -18,7 +17,7 @@ function padEnd(value: string, length: number): string {
   return value + ' '.repeat(Math.max(0, length - value.length));
 }
 
-async function execute(workspace: Pick<WorkspaceConfig, 'commands'>) {
+export async function execute(workspace: Pick<WorkspaceConfig, 'commands'>, argv: string[]) {
   const commands = workspace.commands.map((command) => {
     const switches = [...command.aliases, command.name];
 
@@ -52,11 +51,3 @@ async function execute(workspace: Pick<WorkspaceConfig, 'commands'>) {
 
   return 1;
 }
-
-export const help: Command = {
-  aliases: [],
-  args: [],
-  execute,
-  name: 'help',
-  description: 'Print help information',
-};

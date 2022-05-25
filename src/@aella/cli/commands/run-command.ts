@@ -16,54 +16,52 @@ export function replaceExtension(file: string, desiredExtension: string) {
   return file.slice(0, -ext.length) + desiredExtension;
 }
 
-export const run: Command & {
-  createCommand(opts: { file?: string; project: ProjectConfig; target?: TargetConfig }): Command;
-} = {
-  aliases: [],
-  args: ['PROJECT[:TARGET]'],
-  name: '',
-  description: 'Run a project target',
-  execute: () => Promise.reject(),
+export function createCommand({
+  file,
+  project,
+  target,
+}: {
+  file?: string;
+  project: ProjectConfig;
+  target?: TargetConfig;
+}): Command {
+  // const entry = file ? file : target ? target.entry : undefined;
+  if (!(target || file)) {
+    throw new Error('No valid entrypoint to run.');
+  }
 
-  createCommand({ file, project, target }) {
-    // const entry = file ? file : target ? target.entry : undefined;
-    if (!(target || file)) {
-      throw new Error('No valid entrypoint to run.');
-    }
+  return {
+    aliases: ['r'],
+    args: ['PROJECT'],
+    name: 'run',
+    description: 'Run a project',
+    execute: async (workspace: WorkspaceConfig, argv: string[]) => {
+      if (!target) {
+        target = {
+          assets: [],
+          entry: file!,
+          isDefault: false,
+          name: file!,
+          originalConfig: {},
+          project,
+        };
+      }
+      const { sandboxDir } = await build({ target });
 
-    return {
-      aliases: ['r'],
-      args: ['PROJECT'],
-      name: 'run',
-      description: 'Run a project',
-      execute: async (workspace: WorkspaceConfig, argv: string[]) => {
-        if (!target) {
-          target = {
-            assets: [],
-            entry: file!,
-            isDefault: false,
-            name: file!,
-            originalConfig: {},
-            project,
-          };
-        }
-        const { sandboxDir } = await build({ target });
+      // const idx = inputs.indexOf(path.join(project.name, entry));
+      // if (idx === -1) {
+      //   throw new Error(`Cannot find the entrypoint ${entry}.`);
+      // }
 
-        // const idx = inputs.indexOf(path.join(project.name, entry));
-        // if (idx === -1) {
-        //   throw new Error(`Cannot find the entrypoint ${entry}.`);
-        // }
+      // const targetPath = path.join(workspace.distDir, outputs[idx]);
 
-        // const targetPath = path.join(workspace.distDir, outputs[idx]);
+      const { exitCode } = await execaNode(sandboxDir, argv, {
+        cwd: process.cwd(),
+        nodeOptions: ['--require', SOURCE_MAP_SUPPORT],
+        stdio: 'inherit',
+      });
 
-        const { exitCode } = await execaNode(sandboxDir, argv, {
-          cwd: process.cwd(),
-          nodeOptions: ['--require', SOURCE_MAP_SUPPORT],
-          stdio: 'inherit',
-        });
-
-        return exitCode;
-      },
-    };
-  },
-};
+      return exitCode;
+    },
+  };
+}
