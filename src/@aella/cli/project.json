@@ -1,5 +1,6 @@
 {
-  "publish": {
-    "name": "@aella/cli"
+  "bin": {
+    "aella": "bin/aella.js",
+    "la": "bin/aella.js"
   }
 }

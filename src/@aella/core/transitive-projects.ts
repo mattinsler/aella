@@ -2,14 +2,10 @@ import { loadProject } from './load-project.js';
 
 import type { ProjectConfig } from './types';
 
-export function transitiveProjects(projects: ProjectConfig[], transitiveType: 'build' | 'lint') {
-  if (projects.length === 0) {
-    return [];
-  }
-
-  const { workspace } = projects[0];
+function internalTransitiveProjects(project: ProjectConfig, transitiveType: 'build' | 'lint'): Set<ProjectConfig> {
+  const { workspace } = project;
   const projectsMap = new Map<string, ProjectConfig>();
-  const queue = [...projects];
+  const queue = [project];
 
   while (queue.length) {
     const current = queue.shift()!;
@@ -24,5 +20,15 @@ export function transitiveProjects(projects: ProjectConfig[], transitiveType: 'b
     });
   }
 
-  return Array.from(projectsMap.values());
+  return new Set(projectsMap.values());
+}
+
+export function transitiveProjects(project: ProjectConfig, transitiveType: 'build' | 'lint') {
+  return Array.from(internalTransitiveProjects(project, transitiveType));
+}
+
+export function transitiveDepProjects(project: ProjectConfig, transitiveType: 'build' | 'lint') {
+  const projects = internalTransitiveProjects(project, transitiveType);
+  projects.delete(project);
+  return Array.from(projects);
 }

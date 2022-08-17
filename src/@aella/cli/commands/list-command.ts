@@ -7,7 +7,7 @@ export async function execute(workspace: WorkspaceConfig, argv: string[]) {
   const configFiles = await findAllProjectConfigFiles(workspace);
   const projects = configFiles.map((file) => loadProject(workspace, file));
 
-  if (argv[0] === 'targets') {
+  if (~['t', 'target', 'targets'].indexOf(argv[0])) {
     const targets = projects.flatMap((project) =>
       [...project.targets.values()].map((target) =>
         target.isDefault ? target.project.name : `${target.project.name}:${target.name}`

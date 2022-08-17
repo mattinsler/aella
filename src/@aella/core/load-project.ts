@@ -3,11 +3,11 @@ import memo from 'memoizee';
 import path from 'node:path';
 import { parse } from 'jsonc-parser';
 
-import type { CommandOptionsConfig, Glob, ProjectConfig, WorkspaceConfig } from './types';
+import type { BuildOptionsConfig, Glob, ProjectConfig, WorkspaceConfig } from './types';
 
 import { loadTarget } from './load-target.js';
 import { findProjectConfigPath } from './find-project.js';
-import { CommandOptionsSchema, Project } from './json-schema.js';
+import { BuildSchema, Project, ProjectSchema } from './json-schema.js';
 
 // export const BASE_SCHEMA = joi.object({
 //   assets: joi.alternatives(
@@ -126,23 +126,38 @@ function parseSrcsGlob(srcs?: string[] | Partial<Glob>): Glob {
   };
 }
 
-function parseCommandOptions(
-  options: CommandOptionsSchema | undefined,
-  defaults: { [typeName: string]: any }
-): CommandOptionsConfig | undefined {
-  if (!options) {
-    return undefined;
-  }
-
-  const res =
-    typeof options === 'string' ? { type: options, config: {} } : { type: options.type, config: options.config };
-  if (defaults[res.type]) {
-    res.config = {
-      ...defaults[res.type],
-      ...res.config,
+function parseBuild(options: BuildSchema, defaults: { [builderType: string]: any }): BuildOptionsConfig {
+  if (typeof options === 'string') {
+    return {
+      type: options,
+      config: defaults[options] || {},
     };
   }
-  return res;
+
+  const { type, ...config } = options;
+  return {
+    type,
+    config: {
+      ...defaults[type],
+      ...config,
+    },
+  };
+}
+
+function parseDeps(deps: ProjectSchema['deps']): ProjectConfig['dependencies'] {
+  const build = new Set<string>();
+  const lint = new Set<string>();
+
+  Object.entries(deps || {}).forEach(([key, value]) => {
+    if (value === 'build') {
+      build.add(key);
+      lint.add(key);
+    } else if (value === 'lint') {
+      lint.add(key);
+    }
+  });
+
+  return { build: Array.from(build), lint: Array.from(lint) };
 }
 
 const loadProjectFromFile = memo(function loadProjectFromFile(
@@ -154,6 +169,7 @@ const loadProjectFromFile = memo(function loadProjectFromFile(
 
   if (!config.valid) {
     console.log(config.formattedErrors);
+    console.log(config.errors);
     throw new Error(`Could not validate project config file at ${configFile}: ${config.errors}.`);
   }
 
@@ -161,13 +177,10 @@ const loadProjectFromFile = memo(function loadProjectFromFile(
   const name = path.relative(workspace.rootDir, rootDir);
 
   const res: ProjectConfig = {
-    build: parseCommandOptions(config.value.build, workspace.defaults.build),
+    type: 'project',
+    build: parseBuild(config.value.build, workspace.defaults.build),
     configFile,
-    dependencies: {
-      build: config.value.dependencies?.build || [],
-      lint: config.value.dependencies?.lint || [],
-    },
-    deploy: parseCommandOptions(config.value.deploy, workspace.defaults.deploy),
+    dependencies: parseDeps(config.value.deps),
     distDir: path.join(workspace.distDir, name),
     files: {
       assets: parseAssetsGlob(config.value.assets),

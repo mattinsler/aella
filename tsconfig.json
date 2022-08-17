@@ -8,10 +8,7 @@
       "path": "src/@aella/core/tsconfig.json"
     },
     {
-      "path": "src/@aella/docker/tsconfig.json"
-    },
-    {
-      "path": "src/@aella/jest/tsconfig.json"
+      "path": "src/@aella/node/tsconfig.json"
     },
     {
       "path": "src/@aella/typescript/tsconfig.json"

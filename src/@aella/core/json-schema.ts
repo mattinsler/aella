@@ -49,7 +49,9 @@ export function createSchema<T>(config: { schema: (workspace: WorkspaceConfig) =
 
       return {
         errors: validator.errors,
-        formattedErrors: betterAjvErrors(config.schema(workspace), value, validator.errors!),
+        formattedErrors: betterAjvErrors(config.schema(workspace), value, validator.errors!, {
+          json: JSON.stringify(value, null, 2),
+        }),
         valid: false,
       };
     },
@@ -85,80 +87,85 @@ export const Glob = createSchema<GlobSchema>({
     ]),
 });
 
-export type CommandOptionsSchema = string | { type: string; config?: object };
-
-export const CommandOptions = createSchema<CommandOptionsSchema>({
-  schema: () =>
-    S.oneOf([
-      S.string(),
-      S.object().prop('type', S.string()).prop('config', S.object().additionalProperties(true)).required(['type']),
-    ]),
-});
-
-export type TargetSchema = string;
+export interface TargetSchema {
+  bundle: string;
+  target?: string;
+}
 
 export const Target = createSchema<TargetSchema>({
-  schema: () => S.string(),
+  schema: (workspace) => {
+    const schemas: JSONSchema[] = [];
+
+    workspace.allBundlers.forEach((bundler) => {
+      const bundleSchema = S.object()
+        .prop('bundle', S.string().enum([bundler.name]))
+        .prop('target', S.string())
+        .required(['bundle']);
+
+      if (bundler.configSchema) {
+        schemas.push(bundler.configSchema.extend(bundleSchema));
+      } else {
+        schemas.push(bundleSchema);
+      }
+    });
+
+    if (schemas.length === 0) {
+      return S.object();
+    }
+    return S.oneOf(schemas);
+  },
+});
+
+export type BuildSchema = string | { type: string };
+
+export const Build = createSchema<BuildSchema>({
+  schema: (workspace) => {
+    const schemas: JSONSchema[] = [];
+
+    workspace.allBuilders.forEach((builder) => {
+      schemas.push(S.string().enum([builder.name]));
+      if (builder.configSchema) {
+        schemas.push(
+          builder.configSchema.extend(
+            S.object()
+              .prop('bundle', S.string().enum([builder.name]))
+              .required()
+          )
+        );
+      }
+    });
+
+    return S.anyOf(schemas);
+  },
 });
 
 export interface ProjectSchema {
   assets?: GlobSchema;
-  build?: CommandOptionsSchema;
-  dependencies?: {
-    build?: string[];
-    lint?: string[];
+  build: BuildSchema;
+  deps?: {
+    [dep: string]: 'build' | 'lint';
   };
-  deploy?: CommandOptionsSchema;
   srcs?: GlobSchema;
   targets?: Record<string, TargetSchema>;
   test?: boolean;
 }
 
 export const Project = createSchema<ProjectSchema>({
-  schema: (workspace) => {
-    const buildSchemas: JSONSchema[] = [];
-    const deploySchemas: JSONSchema[] = [];
-
-    workspace.builders.forEach((builder) => {
-      buildSchemas.push(S.string().enum([builder.name]));
-      if (builder.configSchema) {
-        buildSchemas.push(
-          S.object()
-            .prop('type', S.string().enum([builder.name]))
-            .prop('config', builder.configSchema)
-        );
-      }
-    });
-
-    workspace.deployers.forEach((deployer) => {
-      deploySchemas.push(S.string().enum([deployer.name]));
-      if (deployer.configSchema) {
-        deploySchemas.push(
-          S.object()
-            .prop('type', S.string().enum([deployer.name]))
-            .prop('config', deployer.configSchema)
-        );
-      }
-    });
-
-    return S.object()
+  schema: (workspace) =>
+    S.object()
       .prop('assets', Glob.schema(workspace))
-      .prop('build', S.oneOf(buildSchemas))
-      .prop(
-        'dependencies',
-        S.object().prop('build', S.array().items(S.string())).prop('lint', S.array().items(S.string()))
-      )
-      .prop('deploy', S.oneOf(deploySchemas))
+      .prop('build', Build.schema(workspace))
+      .required()
+      .prop('deps', S.object().additionalProperties(S.string().enum(['build', 'lint'])))
       .prop('srcs', Glob.schema(workspace))
       .prop('targets', S.object().additionalProperties(Target.schema(workspace)))
-      .prop('test', S.boolean());
-  },
+      .prop('test', S.boolean()),
 });
 
 export interface WorkspaceSchema {
   defaults?: {
     build?: { [builderType: string]: any };
-    deploy?: { [deployerType: string]: any };
+    bundle?: { [bundlerType: string]: any };
   };
   distDir?: string;
   plugins?: string[];
@@ -172,22 +179,22 @@ export interface WorkspaceSchema {
 export const Workspace = createSchema<WorkspaceSchema>({
   schema: (workspace) => {
     let buildDefaults = S.object();
-    let deployDefaults = S.object();
+    let bundleDefaults = S.object();
 
-    workspace.builders.forEach((builder) => {
+    workspace.allBuilders.forEach((builder) => {
       if (builder.configSchema) {
         buildDefaults = buildDefaults.prop(builder.name, builder.configSchema);
       }
     });
 
-    workspace.deployers.forEach((deployer) => {
-      if (deployer.configSchema) {
-        deployDefaults = deployDefaults.prop(deployer.name, deployer.configSchema);
+    workspace.allBundlers.forEach((bundler) => {
+      if (bundler.configSchema) {
+        bundleDefaults = bundleDefaults.prop(bundler.name, bundler.configSchema);
       }
     });
 
     return S.object()
-      .prop('defaults', S.object().prop('build', buildDefaults).prop('deploy', deployDefaults))
+      .prop('defaults', S.object().prop('build', buildDefaults).prop('bundle', bundleDefaults))
       .prop('distDir', S.string())
       .prop('plugins', S.array().items(S.string()))
       .prop('project', S.object().prop('config', S.object().prop('filename', S.string())));

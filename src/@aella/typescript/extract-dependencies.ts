@@ -3,19 +3,15 @@ import path from 'node:path';
 import esbuild from 'esbuild';
 import { parse } from 'jsonc-parser';
 
-import type { BuildProjectOptions, Dependency } from '@aella/core';
+import type { BuildOptions, Dependency } from '@aella/core';
 
-import { LOADERS } from './loaders.js';
+import { isFileSupported } from './supported.js';
 import { plugin } from './extract-dependencies-plugin.js';
 
-const SUPPORTED_EXTENSIONS = new Set(Object.keys(LOADERS));
-
-export async function extractDependencies({ files, project }: BuildProjectOptions): Promise<Dependency[]> {
+export async function extractDependencies({ sources, project }: BuildOptions): Promise<Dependency[]> {
   // const tsconfig = path.join(project.rootDir, 'tsconfig.json');
   const pkg = parse(await fs.promises.readFile(path.join(project.workspace.rootDir, 'package.json'), 'utf-8'));
-  const inputs = files.sources.filter(
-    (file) => SUPPORTED_EXTENSIONS.has(path.extname(file)) && !file.endsWith('.d.ts')
-  );
+  const inputs = sources.filter(isFileSupported);
 
   const external = [
     ...Object.keys(pkg.dependencies || {}),
@@ -29,7 +25,7 @@ export async function extractDependencies({ files, project }: BuildProjectOption
   // TODO: handle errors and warnings
   await esbuild.build({
     bundle: true,
-    entryPoints: inputs.map((file) => path.join(project.rootDir, file)),
+    entryPoints: inputs.map((file) => file.absolutePath),
     external,
     format: 'esm',
     outdir: project.workspace.distDir,

@@ -3,7 +3,7 @@ import 'source-map-support/register.js';
 
 import chalk from 'chalk';
 import {
-  createEmptyWorkspaceConfig,
+  createWorkspaceConfig,
   findWorkspaceRoot,
   loadWorkspace as coreLoadWorkspace,
   resolveTarget,
@@ -11,9 +11,9 @@ import {
 
 import type { WorkspaceConfig } from '@aella/core';
 
-import { affected, build, deploy, fix, help, init, list, run, test } from './commands/index.js';
+import { affected, build, fix, help, init, list, run, test } from './commands/index.js';
 
-const DEFAULT_COMMANDS = [run, affected, build, test, deploy, fix, init, list, help];
+const DEFAULT_COMMANDS = [run, affected, build, test, fix, init, list, help];
 
 function findCommand(workspace: WorkspaceConfig, value: string) {
   return workspace.commands.find((command) => {
@@ -36,7 +36,7 @@ async function loadWorkspace(rootDir: string, command: string) {
   } catch (err) {
     if (command === 'init' || command === 'help' || command === undefined) {
       console.error(`${chalk.red.bold('[ERROR]')} ${errorText(err)}`);
-      return createEmptyWorkspaceConfig(rootDir);
+      return createWorkspaceConfig(rootDir);
     }
     throw err;
   }

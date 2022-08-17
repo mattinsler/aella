@@ -1,17 +1,49 @@
-// import { buildTarget } from './build-target.js';
-// import { buildProject } from './build-project.js';
-// import { extractDependencies } from './extract-dependencies.js';
-// export { buildProject, buildTarget, extractDependencies };
+import path from 'node:path';
 
-import type { Plugin } from '@aella/core';
+import { NodeModuleInfo } from '@aella/node';
+import { DefaultInfo, builder, plugin } from '@aella/core';
 
-export const plugin: Plugin = (ctx) => {
+import type { TypeScriptBuildConfig } from './build';
+
+import { replaceExtension } from './utils.js';
+import { isFileSupported } from './supported.js';
+
+async function typescriptBuild(config: TypeScriptBuildConfig) {
+  const { build } = await import('./build.js');
+  return build(config);
+}
+
+const build = builder((context, { project, sources }) => {
+  const inputs = sources.filter(isFileSupported);
+  const outputs = inputs.map((file) => context.file(replaceExtension(file.path, '.js'), context.workspace.distDir));
+
+  const tsconfig = context.file(path.join(project.name, 'tsconfig.json'), context.workspace.rootDir);
+
+  context.action(
+    typescriptBuild,
+    {
+      config: {
+        files: inputs,
+        outdir: context.workspace.distDir,
+        outbase: context.workspace.rootDir,
+        target: `node${process.version.slice(1)}`,
+        tsconfig,
+      },
+      inputs,
+      outputs,
+    },
+    'Build TypeScript'
+  );
+
+  return [DefaultInfo({ files: outputs }), NodeModuleInfo({ moduleNames: project.dependencies.build })];
+});
+
+export default plugin((ctx) => {
   ctx.onWorkspaceConfig((config) => {
-    config.builders.push({
-      buildProject: async (...args) => (await import('./build-project.js')).buildProject(...args),
-      buildTarget: async (...args) => (await import('./build-target.js')).buildTarget(...args),
+    config.addBuilder({
+      build,
       extractDependencies: async (...args) => (await import('./extract-dependencies.js')).extractDependencies(...args),
       name: '@aella/typescript',
     });
   });
-};
+});

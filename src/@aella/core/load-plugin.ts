@@ -3,8 +3,8 @@ import resolve from 'resolve';
 
 import type { Plugin, WorkspaceConfig } from './types';
 
+import { build } from './build.js';
 import { loadProject } from './load-project.js';
-import { build, builderForProject } from './build.js';
 import { findProjectNameFromFilePath } from './find-project.js';
 
 export async function loadPlugin(workspace: WorkspaceConfig, pluginPath: string): Promise<Plugin | string | undefined> {
@@ -28,8 +28,8 @@ export async function loadPlugin(workspace: WorkspaceConfig, pluginPath: string)
   if (resolvedPluginPath) {
     if (resolvedPluginPath.endsWith('.js')) {
       const raw = await import(resolvedPluginPath);
-      if (raw && raw.plugin) {
-        return raw.plugin;
+      if (raw && raw.default) {
+        return raw.default;
       }
     }
 
@@ -37,16 +37,14 @@ export async function loadPlugin(workspace: WorkspaceConfig, pluginPath: string)
       const projectName = await findProjectNameFromFilePath(workspace, resolvedPluginPath);
       if (projectName) {
         const project = loadProject(workspace, projectName);
-        try {
-          builderForProject(project);
-        } catch (err) {
+        if (!workspace.getBuilder(project)) {
           return resolvedPluginPath;
         }
 
-        await build({ project, deps: true });
+        await build(workspace, { project });
         const raw = await import(path.join(project.distDir, 'index.js'));
-        if (raw && raw.plugin) {
-          return raw.plugin;
+        if (raw && raw.default) {
+          return raw.default;
         }
       }
     }

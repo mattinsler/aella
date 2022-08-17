@@ -1,7 +1,7 @@
 import path from 'node:path';
-import { execaNode } from 'execa';
-import { build } from '@aella/core';
+import { execa } from 'execa';
 import { createRequire } from 'node:module';
+import { DefaultInfo, Providers, build } from '@aella/core';
 
 import type { Command, ProjectConfig, TargetConfig, WorkspaceConfig } from '@aella/core';
 
@@ -26,7 +26,8 @@ export function createCommand({
   target?: TargetConfig;
 }): Command {
   // const entry = file ? file : target ? target.entry : undefined;
-  if (!(target || file)) {
+  // if (!(target || file)) {
+  if (!target) {
     throw new Error('No valid entrypoint to run.');
   }
 
@@ -36,28 +37,29 @@ export function createCommand({
     name: 'run',
     description: 'Run a project',
     execute: async (workspace: WorkspaceConfig, argv: string[]) => {
-      if (!target) {
-        target = {
-          assets: [],
-          entry: file!,
-          isDefault: false,
-          name: file!,
-          originalConfig: {},
-          project,
-        };
-      }
-      const { sandboxDir } = await build({ target });
-
-      // const idx = inputs.indexOf(path.join(project.name, entry));
-      // if (idx === -1) {
-      //   throw new Error(`Cannot find the entrypoint ${entry}.`);
+      // if (!target) {
+      //   target = {
+      //     assets: [],
+      //     entry: file!,
+      //     isDefault: false,
+      //     name: file!,
+      //     originalConfig: {},
+      //     project,
+      //   };
       // }
 
-      // const targetPath = path.join(workspace.distDir, outputs[idx]);
+      const providers = await build(workspace, { target });
+      const executables = DefaultInfo.executables(providers);
 
-      const { exitCode } = await execaNode(sandboxDir, argv, {
+      if (executables.length === 0) {
+        throw new Error('Cannot find an executable.');
+      }
+
+      console.log(executables.map((file) => file.pathRelativeTo(workspace.rootDir)).join('\n'));
+
+      const { exitCode } = await execa(executables[0].absolutePath, argv, {
         cwd: process.cwd(),
-        nodeOptions: ['--require', SOURCE_MAP_SUPPORT],
+        // nodeOptions: ['--require', SOURCE_MAP_SUPPORT],
         stdio: 'inherit',
       });
 

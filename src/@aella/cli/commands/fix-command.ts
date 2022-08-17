@@ -2,17 +2,16 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { parse } from 'jsonc-parser';
 import {
-  builderForProject,
+  createKernel,
   filesFromProject,
   findAllProjectConfigFiles,
   findAllTestDirectories,
   findProjectNameFromFilePathSync,
   loadProject,
   utils,
-  ProjectConfig,
 } from '@aella/core';
 
-import type { Builder, WorkspaceConfig } from '@aella/core';
+import type { Builder, Kernel, ProjectConfig, WorkspaceConfig } from '@aella/core';
 
 // x root tsconfig.json has all projects referenced
 // x tsconfig.base.json has paths to projects (maybe?)
@@ -21,6 +20,16 @@ import type { Builder, WorkspaceConfig } from '@aella/core';
 // x project.json for each project has deps properly filled in
 // consistently format json config files with jsonc <== future
 
+function sortObject(obj: any) {
+  const res: any = {};
+
+  for (const key of Object.keys(obj).sort()) {
+    res[key] = obj[key];
+  }
+
+  return res;
+}
+
 async function loadProjects(
   workspace: WorkspaceConfig
 ): Promise<Record<string, { builder: Builder; project: ProjectConfig }>> {
@@ -28,7 +37,7 @@ async function loadProjects(
   const projects: Record<string, { builder: Builder; project: ProjectConfig }> = {};
   configFiles.forEach((file) => {
     const project = loadProject(workspace, file);
-    const builder = builderForProject(project);
+    const builder = workspace.getBuilder(project, true);
     projects[project.name] = { builder, project };
   });
   return projects;
@@ -39,6 +48,7 @@ async function readJsonFile(file: string) {
 }
 
 async function analyzeDependencies(
+  kernel: Kernel,
   projects: Record<string, { builder: Builder; project: ProjectConfig }>
 ): Promise<Record<string, ProjectConfig['dependencies']>> {
   const depsByProject: Record<string, ProjectConfig['dependencies']> = {};
@@ -46,8 +56,16 @@ async function analyzeDependencies(
   await Promise.all(
     Object.values(projects).map(async ({ builder, project }) => {
       if (builder.extractDependencies) {
-        const files = await filesFromProject(project);
-        const deps = (await builder.extractDependencies({ files, project }))
+        const { sources } = await filesFromProject(project);
+        const deps = (
+          await builder.extractDependencies({
+            config: project.build.config,
+            sources: sources.map((filePath) =>
+              kernel.file(path.join(project.name, filePath), kernel.workspace.rootDir)
+            ),
+            project,
+          })
+        )
           .map((dep) => {
             if (dep.value.startsWith('/')) {
               const projectName = findProjectNameFromFilePathSync(project.workspace, dep.value);
@@ -87,7 +105,7 @@ async function updateRootTsconfig(workspace: WorkspaceConfig, projects: ProjectC
     }
   });
 
-  await utils.writeFile(tsconfigFile, JSON.stringify(tsconfig, null, 2), 'utf-8');
+  await utils.writeFile(tsconfigFile, JSON.stringify(sortObject(tsconfig), null, 2), 'utf-8');
 }
 
 async function updateTsConfigBase(workspace: WorkspaceConfig, projects: ProjectConfig[]) {
@@ -112,7 +130,7 @@ async function updateTsConfigBase(workspace: WorkspaceConfig, projects: ProjectC
     tsconfigBase.compilerOptions.paths[`//${project.name}`] = [path.relative(baseUrl, project.rootDir)];
   });
 
-  await utils.writeFile(tsconfigFile, JSON.stringify(tsconfigBase, null, 2), 'utf-8');
+  await utils.writeFile(tsconfigFile, JSON.stringify(sortObject(tsconfigBase), null, 2), 'utf-8');
 }
 
 async function updateTsConfig(project: ProjectConfig, deps: ProjectConfig['dependencies']) {
@@ -140,7 +158,7 @@ async function updateTsConfig(project: ProjectConfig, deps: ProjectConfig['depen
       path: path.relative(project.rootDir, path.join(project.workspace.rootDir, dep.slice(2))),
     }));
 
-  await utils.writeFile(tsconfigFile, JSON.stringify(tsconfig, null, 2), 'utf-8');
+  await utils.writeFile(tsconfigFile, JSON.stringify(sortObject(tsconfig), null, 2), 'utf-8');
 }
 
 async function updateProjectConfig(project: ProjectConfig, deps: ProjectConfig['dependencies']) {
@@ -154,15 +172,20 @@ async function updateProjectConfig(project: ProjectConfig, deps: ProjectConfig['
   const lint = deps.lint.filter((dep) => !dep.startsWith('.')).sort();
 
   if (build.length === 0 && lint.length === 0) {
-    delete config.dependencies;
+    delete config.deps;
   } else {
-    config.dependencies = { build, lint };
+    const buildDeps = new Set(build);
+    config.deps = lint.reduce<Record<string, 'build' | 'lint'>>((agg, dep) => {
+      agg[dep] = buildDeps.has(dep) ? 'build' : 'lint';
+      return agg;
+    }, {});
   }
 
-  await utils.writeFile(project.configFile, JSON.stringify(config, null, 2), 'utf-8');
+  await utils.writeFile(project.configFile, JSON.stringify(sortObject(config), null, 2), 'utf-8');
 }
 
 export async function execute(workspace: WorkspaceConfig, argv: string[]) {
+  const kernel = createKernel(workspace);
   const [projects, testDirectories] = await Promise.all([loadProjects(workspace), findAllTestDirectories(workspace)]);
 
   testDirectories.forEach((dir) => {
@@ -171,13 +194,13 @@ export async function execute(workspace: WorkspaceConfig, argv: string[]) {
       utils.writeFileSync(projectConfigFile, '{}', 'utf-8');
       const project = loadProject(workspace, projectConfigFile);
       projects[project.name] = {
-        builder: builderForProject(project),
+        builder: workspace.getBuilder(project, true),
         project,
       };
     }
   });
 
-  const depsByProject = await analyzeDependencies(projects);
+  const depsByProject = await analyzeDependencies(kernel, projects);
 
   await Promise.all([
     updateRootTsconfig(

@@ -4,24 +4,77 @@ import path from 'node:path';
 import S from 'fluent-json-schema';
 import { parse } from 'jsonc-parser';
 
-import type { Plugin, PluginContext, WorkspaceConfig } from './types';
+import type { Builder, Bundler, Plugin, PluginContext, WorkspaceConfig } from './types';
 
 import { loadPlugin } from './load-plugin.js';
 import { findWorkspaceConfigPath } from './find-workspace.js';
 import { Project, Target, Workspace } from './json-schema.js';
 import { generateJsonSchema } from './generate-json-schema.js';
 
-export function createEmptyWorkspaceConfig(rootDir: string): WorkspaceConfig {
+export function createWorkspaceConfig(rootDir: string): WorkspaceConfig {
   rootDir = path.resolve(rootDir);
 
+  const builders = new Map<string, Builder>();
+  const bundlers = new Map<string, Bundler>();
+
   return {
-    builders: [],
+    addBuilder(builder) {
+      if (builders.has(builder.name)) {
+        throw new Error();
+      }
+      builders.set(builder.name, builder);
+    },
+    addBundler(bundler) {
+      if (bundlers.has(bundler.name)) {
+        throw new Error();
+      }
+      bundlers.set(bundler.name, bundler);
+    },
+
+    // @ts-expect-error
+    getBuilder(projectOrName, throwOnMissing) {
+      const builder =
+        typeof projectOrName === 'string' ? builders.get(projectOrName) : builders.get(projectOrName.build.type);
+
+      if (!builder && throwOnMissing) {
+        throw new Error(
+          typeof projectOrName === 'string'
+            ? `No builder named ${projectOrName} exists.`
+            : `Project ${projectOrName.name} does not have a valid builder configured.`
+        );
+      }
+
+      return builder;
+    },
+
+    // @ts-expect-error
+    getBundler(targetOrName, throwOnMissing) {
+      const bundler =
+        typeof targetOrName === 'string' ? bundlers.get(targetOrName) : bundlers.get(targetOrName.bundle.type);
+
+      if (!bundler && throwOnMissing) {
+        throw new Error(
+          typeof targetOrName === 'string'
+            ? `No bundler named ${targetOrName} exists.`
+            : `Target ${targetOrName.project.name}:${targetOrName.name} does not have a valid bundler configured.`
+        );
+      }
+
+      return bundler;
+    },
+
+    get allBuilders() {
+      return Array.from(builders.values());
+    },
+    get allBundlers() {
+      return Array.from(bundlers.values());
+    },
+
     commands: [],
     defaults: {
       build: {},
-      deploy: {},
+      bundle: {},
     },
-    deployers: [],
     distDir: path.join(rootDir, 'dist'),
     metaDir: path.join(rootDir, '.aella'),
     originalConfig: {},
@@ -64,31 +117,16 @@ const loadWorkspaceFromFile = memo(
 
     const rootDir = path.dirname(file);
 
-    const res: WorkspaceConfig = {
-      builders: [],
-      commands: [],
-      defaults: {
-        build: {},
-        deploy: {},
-      },
-      deployers: [],
-      distDir: originalConfig.distDir || path.join(rootDir, 'dist'),
-      metaDir: path.join(rootDir, '.aella'),
-      originalConfig,
-      plugins,
-      pluginHooks,
-      project: {
-        config: {
-          filename: originalConfig.project?.config?.filename || 'project.json',
-        },
-      },
-      rootDir,
-      schemas: {
-        project: Project,
-        target: Target,
-        workspace: Workspace,
-      },
-    };
+    const res = createWorkspaceConfig(rootDir);
+    res.originalConfig = originalConfig;
+    if (originalConfig.distDir) {
+      res.distDir = originalConfig.distDir;
+    }
+    if (originalConfig.project?.config?.filename) {
+      res.project.config.filename = originalConfig.project.config.filename;
+    }
+    res.plugins = plugins;
+    res.pluginHooks = pluginHooks;
 
     const pluginsToRetry: string[] = [];
     const pluginContext: PluginContext = {
@@ -128,7 +166,7 @@ const loadWorkspaceFromFile = memo(
 
     if (config.value.defaults) {
       res.defaults.build = { ...config.value.defaults.build };
-      res.defaults.deploy = { ...config.value.defaults.deploy };
+      res.defaults.bundle = { ...config.value.defaults.bundle };
     }
 
     generateJsonSchema(res);

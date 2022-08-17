@@ -16,14 +16,6 @@ export const build: Command = {
   description: 'Build a project',
 };
 
-export const deploy: Command = {
-  aliases: [],
-  args: ['PROJECT[:TARGET]'],
-  execute: async (...args) => (await import('./deploy-command.js')).execute(...args),
-  name: 'deploy',
-  description: 'Deploy a project or target',
-};
-
 export const fix: Command = {
   aliases: [],
   args: [],

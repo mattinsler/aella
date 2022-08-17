@@ -1,31 +1,37 @@
 import fs from 'fs';
-import path from 'path';
 
-import type { ProjectConfig } from './types.js';
+import type { File, Kernel, Provider } from './types';
 
-export async function copyAssets({
-  files,
-  project,
-}: {
-  files: { assets: string[]; sources: string[] };
-  project: ProjectConfig;
-}) {
-  const { workspace } = project;
+import { DefaultInfo } from './default-info.js';
 
-  const copies = files.assets.map((asset) => ({
-    from: path.join(project.rootDir, asset),
-    to: path.join(workspace.distDir, path.relative(workspace.rootDir, project.rootDir), asset),
-  }));
+async function copyFiles({ copies }: { copies: Array<{ from: File; to: File }> }) {
+  const dirs = new Set(copies.map(({ to }) => to.absoluteDirectory));
+  await Promise.all(Array.from(dirs).map((dir) => fs.promises.mkdir(dir, { recursive: true })));
+  await Promise.all(copies.map(({ from, to }) => fs.promises.copyFile(from.absolutePath, to.absolutePath)));
+}
 
-  await Promise.all(
-    Array.from(new Set(copies.map(({ to }) => path.dirname(to)))).map((dir) =>
-      fs.promises.mkdir(dir, { recursive: true })
-    )
+export async function copyAssets(
+  kernel: Kernel,
+  {
+    files,
+  }: {
+    files: { assets: File[] };
+  }
+): Promise<Provider[]> {
+  const inputs = files.assets;
+  const outputs = inputs.map((asset) => kernel.file(asset.path, kernel.workspace.distDir));
+
+  kernel.task(
+    copyFiles,
+    {
+      config: {
+        copies: inputs.map((input, idx) => ({ from: input, to: outputs[idx] })),
+      },
+      inputs: files.assets,
+      outputs: outputs,
+    },
+    'Copy Assets'
   );
-  await Promise.all(copies.map(({ from, to }) => fs.promises.copyFile(from, to)));
 
-  return {
-    inputs: files.assets,
-    outputs: files.assets,
-  };
+  return [DefaultInfo({ files: outputs })];
 }

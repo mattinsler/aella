@@ -1,6 +1,14 @@
 import type FluentJsonSchema from 'fluent-json-schema';
 import type { ObjectSchema } from 'fluent-json-schema';
+
+import type { Label } from './label';
+import type { Provider } from './providers';
+import type { Directory, File } from './files';
+import type { ActionContext, Kernel } from './kernel';
 import type { Project, Target, Workspace } from './json-schema';
+import type { BuildStep, BuildStepContext } from './build-graph';
+
+export type { ActionContext, BuildStep, BuildStepContext, Directory, File, Kernel, Label, Provider };
 
 export type Json = string | number | boolean | null | Json[] | { [key: string]: Json };
 
@@ -25,46 +33,27 @@ export interface Dependency {
   value: string;
 }
 
-export interface BuildProjectOptions {
-  files: {
-    assets: string[];
-    sources: string[];
-  };
+export interface BuildOptions {
+  config: any;
+  sources: File[];
   project: ProjectConfig;
-}
-
-export interface BuildProjectResult {
-  inputs: string[];
-  outputs: string[];
-  project: ProjectConfig;
-}
-
-export interface BuildTargetOptions {
-  files: BuildProjectResult;
-  projects: ProjectConfig[];
-  target: TargetConfig;
-}
-
-export interface BuildTargetResult {
-  sandboxDir: string;
-  target: TargetConfig;
 }
 
 export interface Builder {
-  buildProject: (opts: BuildProjectOptions) => Promise<BuildProjectResult>;
-  buildTarget: (opts: BuildTargetOptions) => Promise<BuildTargetResult>;
-  extractDependencies?: (opts: BuildProjectOptions) => Promise<Dependency[]>;
+  build: (context: BuildStepContext, opts: BuildOptions) => Provider[];
+  extractDependencies?: (opts: BuildOptions) => Promise<Dependency[]>;
   name: string;
   configSchema?: ObjectSchema;
 }
 
-export interface DeployOptions {
-  project: ProjectConfig;
-  target?: TargetConfig;
+export interface BundleOptions {
+  config: any;
+  data: Provider[];
+  target: TargetConfig;
 }
 
-export interface Deployer {
-  deploy(opts: DeployOptions): Promise<void>;
+export interface Bundler {
+  bundle: (context: BuildStepContext, opts: BundleOptions) => Provider[];
   name: string;
   configSchema?: ObjectSchema;
 }
@@ -89,20 +78,26 @@ export interface Glob {
   };
 }
 
-export interface CommandOptionsConfig {
+export interface BuildOptionsConfig {
   type: string;
   config: any;
 }
 
+export interface BundleOptionsConfig {
+  type: string;
+  target?: string;
+  config: any;
+}
+
 export interface ProjectConfig {
-  build?: CommandOptionsConfig;
+  type: 'project';
+  build: BuildOptionsConfig;
   configFile: string;
   // other project names this project depends on
   dependencies: {
     build: string[];
     lint: string[];
   };
-  deploy?: CommandOptionsConfig;
   distDir: string;
   // call filesFromProject to get sources and assets paths
   files: {
@@ -119,23 +114,37 @@ export interface ProjectConfig {
 }
 
 export interface TargetConfig {
-  assets: string[];
-  entry: string;
+  type: 'target';
+  bundle: BundleOptionsConfig;
   isDefault: boolean;
   name: string;
   originalConfig: Json;
   project: ProjectConfig;
-  // type: string;
 }
 
 export interface WorkspaceConfig {
-  builders: Builder[];
+  addBuilder(builder: Builder): void;
+
+  getBuilder(project: ProjectConfig, throwOnMissing: true): Builder;
+  getBuilder(name: string, throwOnMissing: true): Builder;
+  getBuilder(project: ProjectConfig): Builder | undefined;
+  getBuilder(name: string): Builder | undefined;
+
+  addBundler(bundler: Bundler): void;
+
+  getBundler(target: TargetConfig, throwOnMissing: true): Bundler;
+  getBundler(name: string, throwOnMissing: true): Bundler;
+  getBundler(target: TargetConfig): Bundler | undefined;
+  getBundler(name: string): Bundler | undefined;
+
+  readonly allBuilders: ReadonlyArray<Builder>;
+  readonly allBundlers: ReadonlyArray<Bundler>;
+
   commands: Command[];
   defaults: {
     build: { [builderType: string]: any };
-    deploy: { [deployerType: string]: any };
+    bundle: { [bundlerType: string]: any };
   };
-  deployers: Deployer[];
   distDir: string;
   metaDir: string;
   // package?: {
@@ -165,4 +174,12 @@ export interface WorkspaceConfig {
     target: typeof Target;
     workspace: typeof Workspace;
   };
+}
+
+export interface Sandbox {
+  readonly rootDir: string;
+
+  build(): Promise<void>;
+  symlink(file: string, target: string): void;
+  writeFile(file: string, content: string, encoding: BufferEncoding): void;
 }

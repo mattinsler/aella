@@ -1,22 +1,35 @@
 import path from 'path';
 
-import type { Json, ProjectConfig, TargetConfig } from './types';
+import type { BundleOptionsConfig, Json, ProjectConfig, TargetConfig } from './types';
 
-import { Target } from './json-schema.js';
+import { Target, TargetSchema } from './json-schema.js';
 
-export function loadTarget(targetName: string, targetData: Json, project: ProjectConfig): TargetConfig {
-  const config = Target.validate(project.workspace, targetData);
+function parseBundle(options: TargetSchema, defaults: { [bundlerType: string]: any }): BundleOptionsConfig {
+  const { bundle: type, target, ...config } = options;
+
+  return {
+    type,
+    target,
+    config: {
+      ...defaults[type],
+      ...config,
+    },
+  };
+}
+
+export function loadTarget(targetName: string, originalConfig: Json, project: ProjectConfig): TargetConfig {
+  const config = Target.validate(project.workspace, originalConfig);
 
   if (!config.valid) {
     throw new Error(`Could not validate target config for ${targetName} in project ${project.name}: ${config.errors}.`);
   }
 
   let res: TargetConfig = {
-    assets: [],
-    entry: config.value,
+    type: 'target',
+    bundle: parseBundle(config.value, project.workspace.defaults.bundle),
     isDefault: path.basename(project.name) === targetName,
     name: targetName,
-    originalConfig: targetData,
+    originalConfig,
     project,
   };
 

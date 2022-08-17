@@ -1,3 +1,4 @@
+import fs from 'fs';
 import path from 'path';
 import { fdir } from 'fdir';
 
@@ -11,6 +12,7 @@ export function findProjects(rootDir) {
     .map((f) => {
       const name = path.dirname(f);
       return {
+        config: JSON.parse(fs.readFileSync(path.join(rootDir, 'src', name, 'project.json'), 'utf-8')),
         distDir: path.join(rootDir, 'dist', name),
         name,
         srcDir: path.join(rootDir, 'src', name),
